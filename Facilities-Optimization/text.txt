@@ -1,0 +1,5 @@
+Chosen_tracts: This will be changed once we have the top 5% of all tracts in danger of becoming a food desert so that it only contains the data of those tracts
+final_Calculation: This is what will generate the image of the map using "Chosen_tracts" as an input
+heatmap: This is what generated a map of the population
+population_heatmap: HTML file of the image produced by "heatmap"
+proccessing: This took the data from the US Census website and merged it with the data provided. 
