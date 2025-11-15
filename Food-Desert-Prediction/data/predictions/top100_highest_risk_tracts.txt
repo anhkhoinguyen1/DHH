@@ -4,6 +4,7 @@ TOP 100 CENSUS TRACTS MOST LIKELY TO BECOME FOOD DESERTS
 
 Based on predictive modeling using demographic, socioeconomic, retail,
 and transportation access indicators.
+Note: Only tracts with valid geographic coordinates are included.
 
 ================================================================================
 
@@ -13,597 +14,597 @@ Rank   1: Census Tract 48471790200
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank   2: Census Tract 24015030506
-  Location: Cecil County, Maryland
-  Risk Probability: 0.9978
-  Risk Level: High Risk
-  Currently Low Access: Yes
-
-Rank   3: Census Tract 13215010501
+Rank   2: Census Tract 13215010501
   Location: Muscogee County, Georgia
   Risk Probability: 0.9974
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank   4: Census Tract 09001081000
-  Location: Fairfield County, Connecticut
-  Risk Probability: 0.9972
-  Risk Level: High Risk
-  Currently Low Access: Yes
-
-Rank   5: Census Tract 25027709202
-  Location: Worcester County, Massachusetts
-  Risk Probability: 0.9971
-  Risk Level: High Risk
-  Currently Low Access: Yes
-
-Rank   6: Census Tract 06035040400
+Rank   3: Census Tract 06035040400
   Location: Lassen County, California
   Risk Probability: 0.9971
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank   7: Census Tract 17143003101
+Rank   4: Census Tract 17143003101
   Location: Peoria County, Illinois
   Risk Probability: 0.9971
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank   8: Census Tract 10001041600
+Rank   5: Census Tract 10001041600
   Location: Kent County, Delaware
   Risk Probability: 0.9970
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank   9: Census Tract 34025811101
+Rank   6: Census Tract 34025811101
   Location: Monmouth County, New Jersey
   Risk Probability: 0.9969
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  10: Census Tract 26099250600
+Rank   7: Census Tract 26099250600
   Location: Macomb County, Michigan
   Risk Probability: 0.9968
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  11: Census Tract 34031264101
+Rank   8: Census Tract 34031264101
   Location: Passaic County, New Jersey
   Risk Probability: 0.9968
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  12: Census Tract 24021750803
-  Location: Frederick County, Maryland
-  Risk Probability: 0.9968
-  Risk Level: High Risk
-  Currently Low Access: Yes
-
-Rank  13: Census Tract 24510272003
+Rank   9: Census Tract 24510272003
   Location: Baltimore city, Maryland
   Risk Probability: 0.9967
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  14: Census Tract 42029301401
+Rank  10: Census Tract 42029301401
   Location: Chester County, Pennsylvania
   Risk Probability: 0.9967
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  15: Census Tract 22075050400
+Rank  11: Census Tract 22075050400
   Location: Plaquemines Parish, Louisiana
   Risk Probability: 0.9967
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  16: Census Tract 25023525203
-  Location: Plymouth County, Massachusetts
-  Risk Probability: 0.9966
-  Risk Level: High Risk
-  Currently Low Access: Yes
-
-Rank  17: Census Tract 26163554900
+Rank  12: Census Tract 26163554900
   Location: Wayne County, Michigan
   Risk Probability: 0.9966
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  18: Census Tract 17031821101
+Rank  13: Census Tract 17031821101
   Location: Cook County, Illinois
   Risk Probability: 0.9966
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  19: Census Tract 47037010502
+Rank  14: Census Tract 47037010502
   Location: Davidson County, Tennessee
   Risk Probability: 0.9966
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  20: Census Tract 55025012201
+Rank  15: Census Tract 55025012201
   Location: Dane County, Wisconsin
   Risk Probability: 0.9965
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  21: Census Tract 48453001729
-  Location: Travis County, Texas
-  Risk Probability: 0.9965
-  Risk Level: High Risk
-  Currently Low Access: Yes
-
-Rank  22: Census Tract 22057021300
+Rank  16: Census Tract 22057021300
   Location: Lafourche Parish, Louisiana
   Risk Probability: 0.9965
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  23: Census Tract 34029735101
+Rank  17: Census Tract 34029735101
   Location: Ocean County, New Jersey
   Risk Probability: 0.9965
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  24: Census Tract 53033032103
+Rank  18: Census Tract 53033032103
   Location: King County, Washington
   Risk Probability: 0.9964
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  25: Census Tract 25027730200
+Rank  19: Census Tract 25027730200
   Location: Worcester County, Massachusetts
   Risk Probability: 0.9964
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  26: Census Tract 09003480300
-  Location: Hartford County, Connecticut
-  Risk Probability: 0.9964
-  Risk Level: High Risk
-  Currently Low Access: Yes
-
-Rank  27: Census Tract 45063020507
-  Location: Lexington County, South Carolina
-  Risk Probability: 0.9963
-  Risk Level: High Risk
-  Currently Low Access: Yes
-
-Rank  28: Census Tract 09005349200
-  Location: Litchfield County, Connecticut
-  Risk Probability: 0.9963
-  Risk Level: High Risk
-  Currently Low Access: Yes
-
-Rank  29: Census Tract 17137952100
+Rank  20: Census Tract 17137952100
   Location: Morgan County, Illinois
   Risk Probability: 0.9963
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  30: Census Tract 12081001104
+Rank  21: Census Tract 12081001104
   Location: Manatee County, Florida
   Risk Probability: 0.9962
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  31: Census Tract 25009266400
+Rank  22: Census Tract 25009266400
   Location: Essex County, Massachusetts
   Risk Probability: 0.9962
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  32: Census Tract 49045131002
-  Location: Tooele County, Utah
-  Risk Probability: 0.9961
-  Risk Level: High Risk
-  Currently Low Access: Yes
-
-Rank  33: Census Tract 06107002700
-  Location: Tulare County, California
-  Risk Probability: 0.9961
-  Risk Level: High Risk
-  Currently Low Access: Yes
-
-Rank  34: Census Tract 27053026006
+Rank  23: Census Tract 27053026006
   Location: Hennepin County, Minnesota
   Risk Probability: 0.9960
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  35: Census Tract 34001011701
-  Location: Atlantic County, New Jersey
-  Risk Probability: 0.9959
-  Risk Level: High Risk
-  Currently Low Access: Yes
-
-Rank  36: Census Tract 27169670200
+Rank  24: Census Tract 27169670200
   Location: Winona County, Minnesota
   Risk Probability: 0.9959
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  37: Census Tract 48365950100
+Rank  25: Census Tract 48365950100
   Location: Panola County, Texas
   Risk Probability: 0.9959
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  38: Census Tract 51059440202
+Rank  26: Census Tract 51059440202
   Location: Fairfax County, Virginia
   Risk Probability: 0.9958
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  39: Census Tract 51177020110
+Rank  27: Census Tract 51177020110
   Location: Spotsylvania County, Virginia
   Risk Probability: 0.9958
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  40: Census Tract 22055001902
-  Location: Lafayette Parish, Louisiana
-  Risk Probability: 0.9958
-  Risk Level: High Risk
-  Currently Low Access: Yes
-
-Rank  41: Census Tract 31025966100
+Rank  28: Census Tract 31025966100
   Location: Cass County, Nebraska
   Risk Probability: 0.9957
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  42: Census Tract 17197880503
+Rank  29: Census Tract 17197880503
   Location: Will County, Illinois
   Risk Probability: 0.9957
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  43: Census Tract 48221160204
+Rank  30: Census Tract 48221160204
   Location: Hood County, Texas
   Risk Probability: 0.9956
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  44: Census Tract 24005451801
+Rank  31: Census Tract 24005451801
   Location: Baltimore County, Maryland
   Risk Probability: 0.9956
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  45: Census Tract 34005702802
+Rank  32: Census Tract 34005702802
   Location: Burlington County, New Jersey
   Risk Probability: 0.9956
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  46: Census Tract 06019001412
+Rank  33: Census Tract 06019001412
   Location: Fresno County, California
   Risk Probability: 0.9956
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  47: Census Tract 24047950000
+Rank  34: Census Tract 24047950000
   Location: Worcester County, Maryland
   Risk Probability: 0.9956
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  48: Census Tract 01129044100
+Rank  35: Census Tract 01129044100
   Location: Washington County, Alabama
   Risk Probability: 0.9955
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  49: Census Tract 34029725002
+Rank  36: Census Tract 34029725002
   Location: Ocean County, New Jersey
   Risk Probability: 0.9955
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  50: Census Tract 29095014601
+Rank  37: Census Tract 29095014601
   Location: Jackson County, Missouri
   Risk Probability: 0.9955
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  51: Census Tract 25027703300
+Rank  38: Census Tract 25027703300
   Location: Worcester County, Massachusetts
   Risk Probability: 0.9955
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  52: Census Tract 01015000900
+Rank  39: Census Tract 01015000900
   Location: Calhoun County, Alabama
   Risk Probability: 0.9954
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  53: Census Tract 45055970403
+Rank  40: Census Tract 45055970403
   Location: Kershaw County, South Carolina
   Risk Probability: 0.9954
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  54: Census Tract 09001080600
-  Location: Fairfield County, Connecticut
-  Risk Probability: 0.9954
-  Risk Level: High Risk
-  Currently Low Access: Yes
-
-Rank  55: Census Tract 54067950100
+Rank  41: Census Tract 54067950100
   Location: Nicholas County, West Virginia
   Risk Probability: 0.9954
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  56: Census Tract 37151030700
+Rank  42: Census Tract 37151030700
   Location: Randolph County, North Carolina
   Risk Probability: 0.9953
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  57: Census Tract 13069010600
+Rank  43: Census Tract 13069010600
   Location: Coffee County, Georgia
   Risk Probability: 0.9953
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  58: Census Tract 25027730300
+Rank  44: Census Tract 25027730300
   Location: Worcester County, Massachusetts
   Risk Probability: 0.9953
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  59: Census Tract 36057070500
+Rank  45: Census Tract 36057070500
   Location: Montgomery County, New York
   Risk Probability: 0.9953
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  60: Census Tract 28039950302
+Rank  46: Census Tract 28039950302
   Location: George County, Mississippi
   Risk Probability: 0.9953
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  61: Census Tract 02170000900
+Rank  47: Census Tract 02170000900
   Location: Matanuska-Susitna Borough, Alaska
   Risk Probability: 0.9953
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  62: Census Tract 25021422501
+Rank  48: Census Tract 25021422501
   Location: Norfolk County, Massachusetts
   Risk Probability: 0.9952
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  63: Census Tract 51015071000
+Rank  49: Census Tract 51015071000
   Location: Augusta County, Virginia
   Risk Probability: 0.9952
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  64: Census Tract 06067009332
+Rank  50: Census Tract 06067009332
   Location: Sacramento County, California
   Risk Probability: 0.9951
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  65: Census Tract 08077001707
+Rank  51: Census Tract 08077001707
   Location: Mesa County, Colorado
   Risk Probability: 0.9951
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  66: Census Tract 09001043200
-  Location: Fairfield County, Connecticut
-  Risk Probability: 0.9951
-  Risk Level: High Risk
-  Currently Low Access: Yes
-
-Rank  67: Census Tract 37183052809
+Rank  52: Census Tract 37183052809
   Location: Wake County, North Carolina
   Risk Probability: 0.9951
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  68: Census Tract 09009348124
-  Location: New Haven County, Connecticut
-  Risk Probability: 0.9951
-  Risk Level: High Risk
-  Currently Low Access: Yes
-
-Rank  69: Census Tract 27123042402
+Rank  53: Census Tract 27123042402
   Location: Ramsey County, Minnesota
   Risk Probability: 0.9950
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  70: Census Tract 22063040805
+Rank  54: Census Tract 22063040805
   Location: Livingston Parish, Louisiana
   Risk Probability: 0.9950
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  71: Census Tract 09001211200
-  Location: Fairfield County, Connecticut
-  Risk Probability: 0.9950
-  Risk Level: High Risk
-  Currently Low Access: Yes
-
-Rank  72: Census Tract 33015003302
+Rank  55: Census Tract 33015003302
   Location: Rockingham County, New Hampshire
   Risk Probability: 0.9950
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  73: Census Tract 17161021600
+Rank  56: Census Tract 17161021600
   Location: Rock Island County, Illinois
   Risk Probability: 0.9949
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  74: Census Tract 18095001300
+Rank  57: Census Tract 18095001300
   Location: Madison County, Indiana
   Risk Probability: 0.9949
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  75: Census Tract 38015010200
+Rank  58: Census Tract 38015010200
   Location: Burleigh County, North Dakota
   Risk Probability: 0.9949
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  76: Census Tract 51770000602
+Rank  59: Census Tract 51770000602
   Location: Roanoke city, Virginia
   Risk Probability: 0.9949
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  77: Census Tract 48351950400
+Rank  60: Census Tract 48351950400
   Location: Newton County, Texas
   Risk Probability: 0.9949
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  78: Census Tract 39085205702
+Rank  61: Census Tract 39085205702
   Location: Lake County, Ohio
   Risk Probability: 0.9948
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  79: Census Tract 46103010906
+Rank  62: Census Tract 46103010906
   Location: Pennington County, South Dakota
   Risk Probability: 0.9948
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  80: Census Tract 01101005901
-  Location: Montgomery County, Alabama
-  Risk Probability: 0.9948
-  Risk Level: High Risk
-  Currently Low Access: Yes
-
-Rank  81: Census Tract 18089042606
+Rank  63: Census Tract 18089042606
   Location: Lake County, Indiana
   Risk Probability: 0.9948
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  82: Census Tract 34005702206
+Rank  64: Census Tract 34005702206
   Location: Burlington County, New Jersey
   Risk Probability: 0.9948
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  83: Census Tract 40043959100
+Rank  65: Census Tract 40043959100
   Location: Dewey County, Oklahoma
   Risk Probability: 0.9948
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  84: Census Tract 09005310803
-  Location: Litchfield County, Connecticut
-  Risk Probability: 0.9948
-  Risk Level: High Risk
-  Currently Low Access: Yes
-
-Rank  85: Census Tract 29023950201
+Rank  66: Census Tract 29023950201
   Location: Butler County, Missouri
   Risk Probability: 0.9948
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  86: Census Tract 48039664400
+Rank  67: Census Tract 48039664400
   Location: Brazoria County, Texas
   Risk Probability: 0.9947
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  87: Census Tract 25027730802
+Rank  68: Census Tract 25027730802
   Location: Worcester County, Massachusetts
   Risk Probability: 0.9947
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  88: Census Tract 48121021614
+Rank  69: Census Tract 48121021614
   Location: Denton County, Texas
   Risk Probability: 0.9947
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  89: Census Tract 17093890202
+Rank  70: Census Tract 17093890202
   Location: Kendall County, Illinois
   Risk Probability: 0.9946
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  90: Census Tract 25017383200
+Rank  71: Census Tract 25017383200
   Location: Middlesex County, Massachusetts
   Risk Probability: 0.9946
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  91: Census Tract 25009261102
+Rank  72: Census Tract 25009261102
   Location: Essex County, Massachusetts
   Risk Probability: 0.9946
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  92: Census Tract 36029016200
+Rank  73: Census Tract 36029016200
   Location: Erie County, New York
   Risk Probability: 0.9946
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  93: Census Tract 17031825302
+Rank  74: Census Tract 17031825302
   Location: Cook County, Illinois
   Risk Probability: 0.9945
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  94: Census Tract 34007609000
+Rank  75: Census Tract 34007609000
   Location: Camden County, New Jersey
   Risk Probability: 0.9945
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  95: Census Tract 06013331000
+Rank  76: Census Tract 06013331000
   Location: Contra Costa County, California
   Risk Probability: 0.9945
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  96: Census Tract 55015020304
+Rank  77: Census Tract 55015020304
   Location: Calumet County, Wisconsin
   Risk Probability: 0.9945
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  97: Census Tract 09011870502
-  Location: New London County, Connecticut
-  Risk Probability: 0.9945
-  Risk Level: High Risk
-  Currently Low Access: Yes
-
-Rank  98: Census Tract 13013180302
+Rank  78: Census Tract 13013180302
   Location: Barrow County, Georgia
   Risk Probability: 0.9944
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank  99: Census Tract 51149850301
+Rank  79: Census Tract 51149850301
   Location: Prince George County, Virginia
   Risk Probability: 0.9944
   Risk Level: High Risk
   Currently Low Access: Yes
 
-Rank 100: Census Tract 09001020900
-  Location: Fairfield County, Connecticut
+Rank  80: Census Tract 25013802500
+  Location: Hampden County, Massachusetts
   Risk Probability: 0.9943
+  Risk Level: High Risk
+  Currently Low Access: Yes
+
+Rank  81: Census Tract 48277000900
+  Location: Lamar County, Texas
+  Risk Probability: 0.9942
+  Risk Level: High Risk
+  Currently Low Access: Yes
+
+Rank  82: Census Tract 12033003506
+  Location: Escambia County, Florida
+  Risk Probability: 0.9942
+  Risk Level: High Risk
+  Currently Low Access: Yes
+
+Rank  83: Census Tract 20077961700
+  Location: Harper County, Kansas
+  Risk Probability: 0.9942
+  Risk Level: High Risk
+  Currently Low Access: Yes
+
+Rank  84: Census Tract 55087012300
+  Location: Outagamie County, Wisconsin
+  Risk Probability: 0.9942
+  Risk Level: High Risk
+  Currently Low Access: Yes
+
+Rank  85: Census Tract 19063070100
+  Location: Emmet County, Iowa
+  Risk Probability: 0.9942
+  Risk Level: High Risk
+  Currently Low Access: Yes
+
+Rank  86: Census Tract 08005083800
+  Location: Arapahoe County, Colorado
+  Risk Probability: 0.9941
+  Risk Level: High Risk
+  Currently Low Access: Yes
+
+Rank  87: Census Tract 18031969500
+  Location: Decatur County, Indiana
+  Risk Probability: 0.9941
+  Risk Level: High Risk
+  Currently Low Access: Yes
+
+Rank  88: Census Tract 18089040501
+  Location: Lake County, Indiana
+  Risk Probability: 0.9940
+  Risk Level: High Risk
+  Currently Low Access: Yes
+
+Rank  89: Census Tract 13013180402
+  Location: Barrow County, Georgia
+  Risk Probability: 0.9940
+  Risk Level: High Risk
+  Currently Low Access: Yes
+
+Rank  90: Census Tract 13087970100
+  Location: Decatur County, Georgia
+  Risk Probability: 0.9940
+  Risk Level: High Risk
+  Currently Low Access: Yes
+
+Rank  91: Census Tract 55139001300
+  Location: Winnebago County, Wisconsin
+  Risk Probability: 0.9940
+  Risk Level: High Risk
+  Currently Low Access: Yes
+
+Rank  92: Census Tract 25023530500
+  Location: Plymouth County, Massachusetts
+  Risk Probability: 0.9940
+  Risk Level: High Risk
+  Currently Low Access: Yes
+
+Rank  93: Census Tract 17097861901
+  Location: Lake County, Illinois
+  Risk Probability: 0.9940
+  Risk Level: High Risk
+  Currently Low Access: Yes
+
+Rank  94: Census Tract 24033801409
+  Location: Prince George's County, Maryland
+  Risk Probability: 0.9939
+  Risk Level: High Risk
+  Currently Low Access: Yes
+
+Rank  95: Census Tract 06023010502
+  Location: Humboldt County, California
+  Risk Probability: 0.9939
+  Risk Level: High Risk
+  Currently Low Access: Yes
+
+Rank  96: Census Tract 51650010314
+  Location: Hampton city, Virginia
+  Risk Probability: 0.9939
+  Risk Level: High Risk
+  Currently Low Access: Yes
+
+Rank  97: Census Tract 17051950700
+  Location: Fayette County, Illinois
+  Risk Probability: 0.9939
+  Risk Level: High Risk
+  Currently Low Access: Yes
+
+Rank  98: Census Tract 45015020405
+  Location: Berkeley County, South Carolina
+  Risk Probability: 0.9939
+  Risk Level: High Risk
+  Currently Low Access: Yes
+
+Rank  99: Census Tract 12009067100
+  Location: Brevard County, Florida
+  Risk Probability: 0.9939
+  Risk Level: High Risk
+  Currently Low Access: Yes
+
+Rank 100: Census Tract 13013180106
+  Location: Barrow County, Georgia
+  Risk Probability: 0.9939
   Risk Level: High Risk
   Currently Low Access: Yes
 
@@ -612,55 +613,55 @@ SUMMARY STATISTICS
 ================================================================================
 
 Total Tracts Analyzed: 72,531
-Top 100 Risk Probability Range: 0.9943 - 0.9980
-Average Risk Probability (Top 100): 0.9956
-Median Risk Probability (Top 100): 0.9955
+Top 100 Risk Probability Range: 0.9939 - 0.9980
+Average Risk Probability (Top 100): 0.9952
+Median Risk Probability (Top 100): 0.9951
 
 Top 100 by State:
-  Connecticut: 10 tracts
   Massachusetts: 10 tracts
-  New Jersey: 8 tracts
+  Illinois: 9 tracts
   Texas: 7 tracts
-  Illinois: 7 tracts
+  New Jersey: 7 tracts
+  Georgia: 6 tracts
+  Virginia: 6 tracts
   California: 5 tracts
-  Maryland: 5 tracts
-  Virginia: 5 tracts
-  Louisiana: 4 tracts
-  Georgia: 3 tracts
+  Maryland: 4 tracts
+  Wisconsin: 4 tracts
+  Indiana: 4 tracts
+  Florida: 3 tracts
   Minnesota: 3 tracts
-  Alabama: 3 tracts
-  Wisconsin: 2 tracts
+  Louisiana: 3 tracts
+  Michigan: 2 tracts
+  Alabama: 2 tracts
   South Carolina: 2 tracts
-  New York: 2 tracts
   North Carolina: 2 tracts
   Missouri: 2 tracts
-  Indiana: 2 tracts
-  Michigan: 2 tracts
-  Utah: 1 tracts
-  Florida: 1 tracts
-  Tennessee: 1 tracts
-  Washington: 1 tracts
-  Delaware: 1 tracts
-  Pennsylvania: 1 tracts
-  West Virginia: 1 tracts
+  Colorado: 2 tracts
+  New York: 2 tracts
   Nebraska: 1 tracts
+  Pennsylvania: 1 tracts
+  Tennessee: 1 tracts
+  Delaware: 1 tracts
+  Washington: 1 tracts
   Mississippi: 1 tracts
+  West Virginia: 1 tracts
   Alaska: 1 tracts
-  Colorado: 1 tracts
   New Hampshire: 1 tracts
   North Dakota: 1 tracts
   Ohio: 1 tracts
   South Dakota: 1 tracts
   Oklahoma: 1 tracts
+  Kansas: 1 tracts
+  Iowa: 1 tracts
 
-Top 10 Counties in Top 100:
-  Worcester County: 6 tracts
-  Fairfield County: 5 tracts
-  Cook County: 2 tracts
+Top 10 Counties:
+  Worcester County: 5 tracts
+  Lake County: 4 tracts
+  Barrow County: 3 tracts
   Ocean County: 2 tracts
-  Burlington County: 2 tracts
   Essex County: 2 tracts
-  Montgomery County: 2 tracts
-  Lake County: 2 tracts
-  Litchfield County: 2 tracts
-  Cecil County: 1 tracts
+  Cook County: 2 tracts
+  Decatur County: 2 tracts
+  Burlington County: 2 tracts
+  Peoria County: 1 tracts
+  Lassen County: 1 tracts

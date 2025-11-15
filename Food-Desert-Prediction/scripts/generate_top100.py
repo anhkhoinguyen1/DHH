@@ -598,83 +598,111 @@ def generate_top100():
     # Sort by probability (highest risk first)
     df_sorted = df.sort_values('probability', ascending=False)
     
-    # Get top 100
-    top100 = df_sorted.head(100).copy()
+    # Get coordinates for tracts to filter out those without coordinates
+    print("\nGetting tract coordinates to filter tracts with valid lat/lon...")
+    
+    # Start with top 150 to ensure we get 100 with coordinates (some may be missing)
+    candidate_tracts = df_sorted.head(150).copy()
+    candidate_tracts['CensusTract'] = candidate_tracts['CensusTract'].astype(str).str.zfill(11)
+    
+    # Get coordinates for candidate tracts
+    tract_coords = get_tract_coordinates(candidate_tracts[['CensusTract']].rename(columns={'CensusTract': 'tract_id'}))
+    
+    # Filter to only tracts with valid coordinates
+    tracts_with_coords = []
+    for idx, row in candidate_tracts.iterrows():
+        tract_id = row['CensusTract']
+        lat, lon = tract_coords.get(tract_id, (None, None))
+        if lat is not None and lon is not None:
+            # Validate coordinates are reasonable
+            if -180 <= lon <= 180 and -90 <= lat <= 90:
+                tracts_with_coords.append(idx)
+    
+    if len(tracts_with_coords) < 100:
+        print(f"  ⚠ Only {len(tracts_with_coords)} tracts have coordinates out of top 150")
+        print(f"  Expanding search to get 100 tracts with coordinates...")
+        
+        # Expand search to get more tracts with coordinates
+        expanded_tracts = df_sorted.head(500).copy()  # Check top 500
+        expanded_tracts['CensusTract'] = expanded_tracts['CensusTract'].astype(str).str.zfill(11)
+        
+        # Get coordinates for expanded set
+        expanded_coords = get_tract_coordinates(expanded_tracts[['CensusTract']].rename(columns={'CensusTract': 'tract_id'}))
+        
+        # Filter to tracts with valid coordinates, sorted by probability
+        tracts_with_coords = []
+        for idx, row in expanded_tracts.iterrows():
+            tract_id = row['CensusTract']
+            lat, lon = expanded_coords.get(tract_id, (None, None))
+            if lat is not None and lon is not None:
+                if -180 <= lon <= 180 and -90 <= lat <= 90:
+                    tracts_with_coords.append(idx)
+                    if len(tracts_with_coords) >= 100:
+                        break
+        
+        # Use expanded set
+        candidate_tracts = expanded_tracts
+        tract_coords = expanded_coords
+    
+    # Get top 100 tracts with valid coordinates
+    top100_with_coords = candidate_tracts.loc[tracts_with_coords[:100]].copy()
+    
+    if len(top100_with_coords) < 100:
+        print(f"  ⚠ WARNING: Only {len(top100_with_coords)} tracts have valid coordinates")
+        print(f"  Output will contain {len(top100_with_coords)} tracts instead of 100")
     
     # Add rank
-    top100.insert(0, 'Rank', range(1, len(top100) + 1))
+    top100_with_coords.insert(0, 'Rank', range(1, len(top100_with_coords) + 1))
     
     # Ensure CensusTract is string and properly formatted (11 digits)
-    top100['CensusTract'] = top100['CensusTract'].astype(str).str.zfill(11)
+    top100_with_coords['CensusTract'] = top100_with_coords['CensusTract'].astype(str).str.zfill(11)
     
     # Merge with features for demand estimation
     if features_df is not None:
-        top100 = pd.merge(top100, features_df, on='CensusTract', how='left')
+        top100_with_coords = pd.merge(top100_with_coords, features_df, on='CensusTract', how='left')
     
     # Create output DataFrame with required columns in correct order
     output = pd.DataFrame()
     
     # Required: tract_id (11-digit format as string)
-    output['tract_id'] = top100['CensusTract'].astype(str).str.zfill(11)
+    output['tract_id'] = top100_with_coords['CensusTract'].astype(str).str.zfill(11)
     
-    # Required: lat, lon (latitude, longitude) - NOW USING TIGER/Line shapefiles
-    print("\nGeocoding tract coordinates using Census TIGER/Line shapefiles...")
-    tract_coords = get_tract_coordinates(output[['tract_id']])
+    # Required: lat, lon (latitude, longitude) - Already verified to exist
+    print(f"\nMapping coordinates to {len(output)} tracts with valid coordinates...")
     
-    # Map coordinates to output
+    # Map coordinates to output (we know they all exist)
     lat_list = []
     lon_list = []
-    missing_coords_tracts = []
     
     for tract_id in output['tract_id']:
         lat, lon = tract_coords.get(tract_id, (None, None))
         if lat is not None and lon is not None:
-            # Validate coordinates are reasonable
-            if -180 <= lon <= 180 and -90 <= lat <= 90:
-                lat_list.append(f"{lat:.6f}")
-                lon_list.append(f"{lon:.6f}")
-            else:
-                print(f"  ⚠ Invalid coordinates for tract {tract_id}: lat={lat}, lon={lon}")
-                lat_list.append("")
-                lon_list.append("")
-                missing_coords_tracts.append(tract_id)
+            lat_list.append(f"{lat:.6f}")
+            lon_list.append(f"{lon:.6f}")
         else:
+            # This shouldn't happen since we filtered, but handle it
+            print(f"  ⚠ Unexpected: tract {tract_id} missing coordinates after filtering")
             lat_list.append("")
             lon_list.append("")
-            missing_coords_tracts.append(tract_id)
     
     output['lat'] = lat_list
     output['lon'] = lon_list
     
+    # Verify all have coordinates
     geocoded_count = sum(1 for lat, lon in zip(lat_list, lon_list) if lat and lon)
-    print(f"✓ Geocoded {geocoded_count}/{len(output)} tracts")
-    
-    # Validation: Check for missing coordinates before saving
-    if missing_coords_tracts:
-        print(f"\n⚠ WARNING: {len(missing_coords_tracts)} tracts are missing coordinates:")
-        for tid in missing_coords_tracts[:10]:
-            print(f"    - {tid}")
-        if len(missing_coords_tracts) > 10:
-            print(f"    ... and {len(missing_coords_tracts) - 10} more")
-        print(f"\n  To fix missing coordinates:")
-        print(f"    1. Run: python scripts/generate_all_tract_coordinates.py")
-        print(f"    2. This will generate a complete tract_coordinates.csv file")
-        print(f"    3. Then re-run: python scripts/generate_top100.py")
-        print(f"\n  Continuing with output (missing coordinates will be empty)...\n")
-    else:
-        print("  ✓ All tracts have coordinates!\n")
+    print(f"✓ All {geocoded_count}/{len(output)} tracts have valid coordinates\n")
     
     # Required: risk_probability (0-1)
-    output['risk_probability'] = top100['probability'].clip(0, 1).round(4)
+    output['risk_probability'] = top100_with_coords['probability'].clip(0, 1).round(4)
     
     # Required: demand_mean, demand_std (estimated weekly demand)
-    demand_mean, demand_std = estimate_demand(top100)
+    demand_mean, demand_std = estimate_demand(top100_with_coords)
     output['demand_mean'] = demand_mean
     output['demand_std'] = demand_std
     
     # Required: svi_score (Social Vulnerability Index [0-1])
     print("\nCalculating Social Vulnerability Index (SVI) scores...")
-    svi_scores = calculate_svi_score(top100)
+    svi_scores = calculate_svi_score(top100_with_coords)
     output['svi_score'] = svi_scores
     print(f"✓ Calculated SVI scores for {len(svi_scores)} tracts")
     print(f"  SVI range: {min(svi_scores):.2f} - {max(svi_scores):.2f}")
@@ -693,56 +721,129 @@ def generate_top100():
     print(f"  Rows: {len(output)}")
     print(f"  Sample tract_id: {output['tract_id'].iloc[0]} (length: {len(output['tract_id'].iloc[0])})")
     
-    # Also save detailed version with additional info
+    # Also save detailed version with additional info (if State/County columns exist)
     detailed_file = OUTPUT_DIR / "top100_detailed.csv"
-    detailed_output = top100[['CensusTract', 'State', 'County', 'probability', 'risk_level']].copy()
-    detailed_output['tract_id'] = detailed_output['CensusTract'].astype(str).str.zfill(11)
-    detailed_output = detailed_output[['tract_id', 'State', 'County', 'probability', 'risk_level']]
-    detailed_output.to_csv(detailed_file, index=False)
-    print(f"✓ Saved detailed CSV to: {detailed_file}")
+    if 'State' in top100_with_coords.columns and 'County' in top100_with_coords.columns:
+        detailed_output = top100_with_coords[['CensusTract', 'State', 'County', 'probability', 'risk_level']].copy()
+        detailed_output['tract_id'] = detailed_output['CensusTract'].astype(str).str.zfill(11)
+        detailed_output = detailed_output[['tract_id', 'State', 'County', 'probability', 'risk_level']]
+        detailed_output.to_csv(detailed_file, index=False)
+        print(f"✓ Saved detailed CSV to: {detailed_file}")
     
-    # Save as formatted text (using top100 for detailed info)
+    # Save as formatted text (using top100_with_coords for detailed info)
     txt_file = OUTPUT_DIR / "top100_highest_risk_tracts.txt"
     with open(txt_file, 'w') as f:
         f.write("=" * 80 + "\n")
-        f.write("TOP 100 CENSUS TRACTS MOST LIKELY TO BECOME FOOD DESERTS\n")
+        f.write(f"TOP {len(output)} CENSUS TRACTS MOST LIKELY TO BECOME FOOD DESERTS\n")
         f.write("=" * 80 + "\n\n")
         f.write("Based on predictive modeling using demographic, socioeconomic, retail,\n")
-        f.write("and transportation access indicators.\n\n")
+        f.write("and transportation access indicators.\n")
+        f.write("Note: Only tracts with valid geographic coordinates are included.\n\n")
         f.write("=" * 80 + "\n\n")
         
-        for idx, row in top100.iterrows():
-            f.write(f"Rank {row['Rank']:3d}: Census Tract {row['CensusTract']}\n")
-            f.write(f"  Location: {row['County']}, {row['State']}\n")
-            f.write(f"  Risk Probability: {row['probability']:.4f}\n")
-            f.write(f"  Risk Level: {row['risk_level']}\n")
-            if 'currently_low_access' in row and pd.notna(row['currently_low_access']):
-                status = "Yes" if row['currently_low_access'] == 1 else "No"
-                f.write(f"  Currently Low Access: {status}\n")
-            f.write("\n")
+        # Write tract details (only if State/County columns exist)
+        if 'State' in top100_with_coords.columns and 'County' in top100_with_coords.columns:
+            for idx, row in top100_with_coords.iterrows():
+                f.write(f"Rank {row['Rank']:3d}: Census Tract {row['CensusTract']}\n")
+                f.write(f"  Location: {row['County']}, {row['State']}\n")
+                f.write(f"  Risk Probability: {row['probability']:.4f}\n")
+                if 'risk_level' in row:
+                    f.write(f"  Risk Level: {row['risk_level']}\n")
+                if 'currently_low_access' in row and pd.notna(row['currently_low_access']):
+                    status = "Yes" if row['currently_low_access'] == 1 else "No"
+                    f.write(f"  Currently Low Access: {status}\n")
+                f.write("\n")
+        else:
+            # If no State/County info, just write tract IDs
+            for idx, row in top100_with_coords.iterrows():
+                f.write(f"Rank {row['Rank']:3d}: Census Tract {row['CensusTract']}\n")
+                f.write(f"  Risk Probability: {row['probability']:.4f}\n")
+                f.write("\n")
         
         f.write("=" * 80 + "\n")
         f.write("SUMMARY STATISTICS\n")
         f.write("=" * 80 + "\n\n")
         f.write(f"Total Tracts Analyzed: {len(df):,}\n")
-        f.write(f"Top 100 Risk Probability Range: {output['risk_probability'].min():.4f} - {output['risk_probability'].max():.4f}\n")
-        f.write(f"Average Risk Probability (Top 100): {output['risk_probability'].mean():.4f}\n")
-        f.write(f"Median Risk Probability (Top 100): {output['risk_probability'].median():.4f}\n\n")
+        f.write(f"Top {len(output)} Risk Probability Range: {output['risk_probability'].min():.4f} - {output['risk_probability'].max():.4f}\n")
+        f.write(f"Average Risk Probability (Top {len(output)}): {output['risk_probability'].mean():.4f}\n")
+        f.write(f"Median Risk Probability (Top {len(output)}): {output['risk_probability'].median():.4f}\n\n")
         
-        # State breakdown
-        state_counts = top100['State'].value_counts()
-        f.write("Top 100 by State:\n")
-        for state, count in state_counts.items():
-            f.write(f"  {state}: {count} tracts\n")
-        f.write("\n")
-        
-        # County breakdown (top 10)
-        county_counts = top100['County'].value_counts().head(10)
-        f.write("Top 10 Counties in Top 100:\n")
-        for county, count in county_counts.items():
-            f.write(f"  {county}: {count} tracts\n")
+        # State breakdown (if available)
+        if 'State' in top100_with_coords.columns:
+            state_counts = top100_with_coords['State'].value_counts()
+            f.write(f"Top {len(output)} by State:\n")
+            for state, count in state_counts.items():
+                f.write(f"  {state}: {count} tracts\n")
+            f.write("\n")
+            
+            # County breakdown (top 10, if available)
+            if 'County' in top100_with_coords.columns:
+                county_counts = top100_with_coords['County'].value_counts().head(10)
+                f.write("Top 10 Counties:\n")
+                for county, count in county_counts.items():
+                    f.write(f"  {county}: {count} tracts\n")
     
     print(f"✓ Saved formatted text to: {txt_file}")
+    
+    # Save as markdown format
+    md_file = OUTPUT_DIR / "top100_highest_risk_tracts.md"
+    with open(md_file, 'w') as f:
+        f.write("# Top 100 Census Tracts Most Likely to Become Food Deserts\n\n")
+        f.write("Based on predictive modeling using demographic, socioeconomic, retail, and transportation access indicators.\n")
+        f.write("**Note:** Only tracts with valid geographic coordinates are included.\n\n")
+        
+        # Summary Statistics
+        f.write("## Summary Statistics\n\n")
+        f.write(f"- **Total Tracts Analyzed:** {len(df):,}\n")
+        f.write(f"- **Risk Probability Range (Top {len(output)}):** {output['risk_probability'].min()*100:.2f}% - {output['risk_probability'].max()*100:.2f}%\n")
+        f.write(f"- **Average Risk Probability (Top {len(output)}):** {output['risk_probability'].mean()*100:.2f}%\n")
+        f.write(f"- **Median Risk Probability (Top {len(output)}):** {output['risk_probability'].median()*100:.2f}%\n")
+        f.write(f"- **Average Weekly Demand:** {output['demand_mean'].mean():.1f} households\n")
+        f.write(f"- **Average SVI Score:** {output['svi_score'].mean():.2f}\n\n")
+        
+        # State breakdown
+        if 'State' in top100_with_coords.columns:
+            f.write("## Top 100 by State\n\n")
+            f.write("| State | Number of Tracts |\n")
+            f.write("|-------|------------------|\n")
+            state_counts = top100_with_coords['State'].value_counts().sort_values(ascending=False)
+            for state, count in state_counts.items():
+                f.write(f"| {state} | {count} |\n")
+            f.write("\n")
+        
+        # County breakdown (top 10)
+        if 'State' in top100_with_coords.columns and 'County' in top100_with_coords.columns:
+            f.write("## Top 10 Counties in Top 100\n\n")
+            f.write("| County | State | Number of Tracts |\n")
+            f.write("|--------|-------|------------------|\n")
+            county_counts = top100_with_coords.groupby(['County', 'State']).size().reset_index(name='count')
+            county_counts = county_counts.sort_values('count', ascending=False).head(10)
+            for _, row in county_counts.iterrows():
+                f.write(f"| {row['County']} | {row['State']} | {row['count']} |\n")
+            f.write("\n")
+        
+        # Complete list
+        f.write(f"## Complete List (Top {len(output)})\n\n")
+        f.write("| Rank | Census Tract | State | County | Risk Probability | Risk Level | Currently Low Access |\n")
+        f.write("|------|--------------|-------|--------|------------------|-----------|---------------------|\n")
+        
+        for idx, row in top100_with_coords.iterrows():
+            rank = row['Rank']
+            tract_id = row['CensusTract']
+            state = row.get('State', 'N/A') if 'State' in row else 'N/A'
+            county = row.get('County', 'N/A') if 'County' in row else 'N/A'
+            prob_pct = row['probability'] * 100
+            risk_level = row.get('risk_level', 'High Risk') if 'risk_level' in row else 'High Risk'
+            
+            # Currently low access status
+            if 'currently_low_access' in row and pd.notna(row['currently_low_access']):
+                low_access = "Yes" if row['currently_low_access'] == 1 else "No"
+            else:
+                low_access = "N/A"
+            
+            f.write(f"| {rank} | {tract_id} | {state} | {county} | {prob_pct:.2f}% | {risk_level} | {low_access} |\n")
+    
+    print(f"✓ Saved markdown format to: {md_file}")
     
     # Print summary
     print("\n" + "=" * 60)
@@ -751,9 +852,10 @@ def generate_top100():
     print(f"Risk Probability Range: {output['risk_probability'].min():.4f} - {output['risk_probability'].max():.4f}")
     print(f"Average Risk Probability: {output['risk_probability'].mean():.4f}")
     print(f"Average Weekly Demand: {output['demand_mean'].mean():.1f} households")
-    print(f"\nTop 5 States:")
-    for state, count in top100['State'].value_counts().head(5).items():
-        print(f"  {state}: {count} tracts")
+    if 'State' in top100_with_coords.columns:
+        print(f"\nTop 5 States:")
+        for state, count in top100_with_coords['State'].value_counts().head(5).items():
+            print(f"  {state}: {count} tracts")
     
     print("\n" + "=" * 60)
     print("Top 100 list generation complete!")
