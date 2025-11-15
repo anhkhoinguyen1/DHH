@@ -18,8 +18,13 @@ data/01_census_demographics/metadata/
 
 data/02_food_access/*.xlsx
 data/02_food_access/USDA\ Food\ Environment\ Atlas/
+# Explicitly exclude large Food Access Atlas files
+data/02_food_access/FoodAccessResearchAtlasData2015.xlsx
+data/02_food_access/FoodAccessResearchAtlasData2019.xlsx
 
 data/03_health_outcomes/*.csv
+# Explicitly exclude large CDC PLACES file (585MB+)
+data/03_health_outcomes/CDC_PLACES_Tract.csv
 
 data/04_housing_economics/Zillow/
 
