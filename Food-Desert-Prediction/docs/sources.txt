@@ -1,0 +1,247 @@
+================================================================================
+DATA SOURCES DOCUMENTATION
+Food Desert Prediction Project
+================================================================================
+
+This document catalogs all data sources used for predicting food desert risk
+in U.S. census tracts. All sources are publicly available and free to use.
+
+================================================================================
+1. USDA FOOD ACCESS RESEARCH ATLAS
+================================================================================
+Source: https://www.ers.usda.gov/data-products/food-access-research-atlas/
+Direct Download: https://www.ers.usda.gov/data-products/food-access-research-atlas/download-the-data/
+Format: Excel (.xlsx)
+Update Frequency: Annual (typically released with 1-2 year lag)
+Years Available: 2010, 2015, 2019, 2021 (and potentially newer)
+
+Key Variables:
+- CensusTract: Unique tract identifier
+- State, County: Geographic identifiers
+- LILATracts_1And10: Low-income and low-access flag (1 mile urban, 10 miles rural)
+- LILATracts_halfAnd10: Low-income and low-access flag (0.5 mile urban, 10 miles rural)
+- LILATracts_1And20: Low-income and low-access flag (1 mile urban, 20 miles rural)
+- LILATracts_Vehicle: Low-income and low-access considering vehicle access
+- LowIncomeTracts: Flag for low-income tracts
+- PovertyRate: Poverty rate percentage
+- MedianFamilyIncome: Median family income
+- lapop1, lapop10, lapop20: Low-access population counts at different distances
+- lalowi1, lalowi10, lalowi20: Low-access low-income population counts
+- lahunv1, lahunv10, lahunv20: Low-access households without vehicle
+- lasnap1, lasnap10, lasnap20: Low-access SNAP recipient households
+- TractLOWI, TractKids, TractSeniors: Demographic counts
+- TractHUNV, TractSNAP: Household counts
+
+Purpose: Baseline food access conditions, current low-access status, distance metrics
+
+================================================================================
+2. U.S. CENSUS AMERICAN COMMUNITY SURVEY (ACS) 5-YEAR ESTIMATES
+================================================================================
+Source: https://www.census.gov/data/developers/data-sets/acs-5year.html
+API: https://api.census.gov/data/2022/acs/acs5
+Direct Download: https://data.census.gov/cedsci/
+Format: CSV, API (JSON)
+Update Frequency: Annual (5-year estimates released each December)
+Years Available: 2009-present (5-year rolling windows)
+
+Key Variables (via API):
+- B19013_001E: Median household income
+- B17001_002E: Population below poverty level
+- B15003_022E: Population with bachelor's degree or higher
+- B25064_001E: Median gross rent
+- B25077_001E: Median home value
+- B25003_002E: Owner-occupied housing units
+- B25003_003E: Renter-occupied housing units
+- B08301_021E: Households with no vehicle available
+- B01001_001E: Total population
+- B03002_003E: White alone population
+- B03002_004E: Black or African American alone
+- B03002_005E: American Indian and Alaska Native alone
+- B03002_006E: Asian alone
+- B03002_012E: Hispanic or Latino population
+
+Purpose: Socioeconomic predictors, demographic composition, education levels, housing characteristics
+
+API Key: Required (free registration at https://api.census.gov/key.html)
+
+================================================================================
+3. USDA FOOD ENVIRONMENT ATLAS / REFERENCEUSA BUSINESS DATA
+================================================================================
+Source: https://www.ers.usda.gov/data-products/food-environment-atlas/
+Alternative: ReferenceUSA (requires subscription) or Yelp Fusion API (free tier)
+Format: CSV, API (JSON)
+Update Frequency: Varies by source
+
+Key Variables:
+- Grocery store locations (latitude, longitude)
+- Store opening dates
+- Store closure dates
+- Store type (supermarket, convenience store, etc.)
+- Store size/employee count
+
+Purpose: Detect retail retreat or growth patterns, calculate grocery density changes
+
+Note: ReferenceUSA requires subscription. Alternative free sources:
+- Yelp Fusion API: https://www.yelp.com/developers/documentation/v3
+- Google Places API: https://developers.google.com/places/web-service/overview
+- OpenStreetMap Overpass API: https://wiki.openstreetmap.org/wiki/Overpass_API
+
+================================================================================
+4. GTFS TRANSIT FEEDS (GENERAL TRANSIT FEED SPECIFICATION)
+================================================================================
+Source: https://transitfeeds.com/ (aggregator)
+Direct Sources: Individual transit agency websites
+Format: GTFS (ZIP files containing CSV files)
+Update Frequency: Varies by agency (daily to quarterly)
+
+Key Files:
+- stops.txt: Transit stop locations
+- routes.txt: Route information
+- trips.txt: Trip schedules
+- stop_times.txt: Stop arrival/departure times
+- calendar.txt: Service calendar
+
+Purpose: Calculate bus route coverage, frequency, and accessibility to grocery stores
+
+Major Agencies:
+- New York MTA: http://web.mta.info/developers/
+- Los Angeles Metro: https://developer.metro.net/
+- Chicago CTA: https://www.transitchicago.com/developers/
+- National GTFS Repository: https://transitfeeds.com/
+
+================================================================================
+5. CDC PLACES (PLACE-BASED DATA FOR HEALTH)
+================================================================================
+Source: https://www.cdc.gov/places/
+Direct Download: https://chronicdata.cdc.gov/browse?category=Places
+Format: CSV
+Update Frequency: Annual
+Years Available: 2018-present
+
+Key Variables:
+- Diabetes prevalence (%)
+- Hypertension prevalence (%)
+- Obesity prevalence (%)
+- Physical inactivity (%)
+- Geographic level: Census tract, County, ZCTA
+
+Purpose: Health outcome validation, correlation with food access
+
+API: https://chronicdata.cdc.gov/Places/PLACES-Local-Data-for-Better-Health-Census-Tract-D/vbim-akqf
+
+================================================================================
+6. ZILLOW HOUSING DATA / HMDA (HOME MORTGAGE DISCLOSURE ACT)
+================================================================================
+Zillow:
+Source: https://www.zillow.com/research/data/
+Direct Download: https://www.zillow.com/research/data/
+Format: CSV
+Update Frequency: Monthly
+Key Variables: ZRI (Zillow Rent Index), ZHVI (Zillow Home Value Index) by ZIP code
+
+HMDA:
+Source: https://www.consumerfinance.gov/data-research/hmda/
+Direct Download: https://ffiec.cfpb.gov/data-browser/
+Format: CSV
+Update Frequency: Annual
+Key Variables: Loan originations, denials, property values by census tract
+
+Purpose: Detect neighborhood volatility, displacement pressure, rent changes
+
+Note: Zillow data is at ZIP code level, may need to aggregate to tracts
+
+================================================================================
+7. ADDITIONAL DATA SOURCES (OPTIONAL BUT RECOMMENDED)
+================================================================================
+
+A. Census Business Patterns
+Source: https://www.census.gov/data/developers/data-sets/cbp-nonemp-zbp.html
+Purpose: Business establishment counts by NAICS code (445110 = Supermarkets)
+
+B. Opportunity Insights (Harvard)
+Source: https://opportunityinsights.org/data/
+Purpose: Neighborhood-level economic mobility data
+
+C. PolicyMap
+Source: https://www.policymap.com/ (requires subscription, but has free tier)
+Purpose: Comprehensive demographic and economic data
+
+D. USDA SNAP Retailer Locator
+Source: https://www.fns.usda.gov/snap/retailer-locator
+API: https://www.fns.usda.gov/snap/retailer-locator-api
+Purpose: SNAP-authorized retailer locations
+
+================================================================================
+DATA COLLECTION STRATEGY
+================================================================================
+
+1. Baseline Data (Year T):
+   - USDA Food Access Atlas (most recent year)
+   - Census ACS 5-year estimates (most recent)
+   - Current grocery store locations
+
+2. Historical Data (Year T-5 to T-10):
+   - Historical Food Access Atlas releases
+   - Historical ACS estimates
+   - Historical grocery store data (if available)
+
+3. Change Metrics (Delta calculations):
+   - Δ Median Income (T-5 to T)
+   - Δ Poverty Rate (T-5 to T)
+   - Δ Grocery Store Density (T-5 to T)
+   - Δ Vehicle Ownership (T-5 to T)
+   - Δ Transit Access (T-5 to T)
+
+4. Target Variable:
+   - Binary: Did tract become low-access between T-5 and T?
+   - Or: Probability of becoming low-access in next 5 years
+
+================================================================================
+DATA STORAGE
+================================================================================
+
+Organized data structure (5 main categories):
+
+1. data/01_census_demographics/
+   - Census ACS data (API-collected CSV)
+   - TIGER/Line shapefiles cache
+   - Alternative local Excel files
+
+2. data/02_food_access/
+   - USDA Food Access Research Atlas (2019, 2015)
+   - Additional USDA documentation
+
+3. data/03_health_outcomes/
+   - CDC PLACES health outcomes data (CSV)
+
+4. data/04_housing_economics/
+   - Zillow/ directory with housing market data files
+
+5. data/05_infrastructure_transportation/
+   - Grocery store locations (OpenStreetMap CSV)
+   - GTFS/ directory with transit feed ZIP files
+
+Additional directories:
+- data/processed/: Cleaned and merged datasets
+- data/features/: Engineered features for modeling
+- data/predictions/: Model predictions and outputs
+
+See data/README.md for complete directory structure and file descriptions.
+
+================================================================================
+LICENSING AND ATTRIBUTION
+================================================================================
+
+All listed sources are public domain or have permissive licenses:
+- USDA: Public domain
+- U.S. Census: Public domain
+- CDC: Public domain
+- GTFS: Open data, varies by agency (typically CC0 or similar)
+- Zillow: Free for research use (check terms)
+
+Always attribute data sources in publications and documentation.
+
+================================================================================
+LAST UPDATED: 2025-01-27
+================================================================================
+

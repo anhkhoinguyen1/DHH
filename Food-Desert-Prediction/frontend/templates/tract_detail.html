@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tract {{ tract_id }} - Food Desert Prediction</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        .risk-high { background-color: #dc3545; color: white; }
+        .risk-moderate { background-color: #ffc107; color: black; }
+        .risk-low { background-color: #ff9800; color: white; }
+        .risk-very-low { background-color: #28a745; color: white; }
+        .probability-gauge {
+            width: 200px;
+            height: 200px;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div id="loading" class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+
+        <div id="tract-details" style="display: none;">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h4><i class="bi bi-geo-alt"></i> Census Tract: <span id="tract-id"></span></h4>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>State:</strong> <span id="tract-state"></span></p>
+                            <p><strong>County:</strong> <span id="tract-county"></span></p>
+                            <p><strong>Risk Level:</strong> <span id="tract-risk-level" class="badge"></span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Probability:</strong> <span id="tract-probability"></span>%</p>
+                            <p><strong>Currently Low Access:</strong> <span id="tract-current-status"></span></p>
+                            <p><strong>Prediction:</strong> <span id="tract-prediction"></span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h5>Risk Assessment</h5>
+                </div>
+                <div class="card-body">
+                    <div class="progress mb-3" style="height: 30px;">
+                        <div id="probability-bar" class="progress-bar" role="progressbar" style="width: 0%">
+                            <span id="probability-text"></span>
+                        </div>
+                    </div>
+                    <p id="risk-description"></p>
+                </div>
+            </div>
+        </div>
+
+        <div id="error" style="display: none;" class="alert alert-danger">
+            <h5>Error</h5>
+            <p id="error-message"></p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const API_URL = '{{ api_url }}';
+        const TRACT_ID = '{{ tract_id }}';
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadTractDetails();
+        });
+
+        async function loadTractDetails() {
+            try {
+                const response = await fetch(`${API_URL}/tract/${TRACT_ID}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                const data = await response.json();
+                
+                displayTractDetails(data.tract);
+            } catch (error) {
+                console.error('Error loading tract details:', error);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('error-message').textContent = 
+                    `Could not load tract details: ${error.message}. Make sure the API is running.`;
+            }
+        }
+
+        function displayTractDetails(tract) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('tract-details').style.display = 'block';
+
+            document.getElementById('tract-id').textContent = tract.CensusTract;
+            document.getElementById('tract-state').textContent = tract.State;
+            document.getElementById('tract-county').textContent = tract.County;
+            
+            const riskLevel = tract.risk_level;
+            const riskClass = getRiskClass(riskLevel);
+            document.getElementById('tract-risk-level').textContent = riskLevel;
+            document.getElementById('tract-risk-level').className = `badge ${riskClass}`;
+            
+            const probPercent = (tract.probability * 100).toFixed(1);
+            document.getElementById('tract-probability').textContent = probPercent + '%';
+            
+            document.getElementById('tract-current-status').innerHTML = tract.currently_low_access === 1 ? 
+                '<span class="badge bg-danger">Yes</span>' : 
+                '<span class="badge bg-success">No</span>';
+            
+            document.getElementById('tract-prediction').innerHTML = tract.prediction === 1 ? 
+                '<span class="badge bg-danger">At Risk</span>' : 
+                '<span class="badge bg-success">Not At Risk</span>';
+
+            // Update probability bar
+            const probBar = document.getElementById('probability-bar');
+            probBar.style.width = probPercent + '%';
+            probBar.className = `progress-bar ${riskClass}`;
+            probBar.textContent = probPercent + '%';
+            document.getElementById('probability-text').textContent = probPercent + '%';
+
+            // Risk description
+            const descriptions = {
+                'High Risk': 'This tract is at high risk of becoming a food desert. Immediate intervention is recommended.',
+                'Moderate Risk': 'This tract is at moderate risk. Monitoring and preventive measures are advised.',
+                'Low Risk (Emerging)': 'This tract shows emerging risk factors. Continued monitoring is recommended.',
+                'Very Low Risk': 'This tract is at very low risk of becoming a food desert.'
+            };
+            document.getElementById('risk-description').textContent = descriptions[riskLevel] || '';
+        }
+
+        function getRiskClass(riskLevel) {
+            if (riskLevel === 'High Risk') return 'bg-danger';
+            if (riskLevel === 'Moderate Risk') return 'bg-warning';
+            if (riskLevel === 'Low Risk (Emerging)') return 'bg-info';
+            return 'bg-success';
+        }
+    </script>
+</body>
+</html>
+
