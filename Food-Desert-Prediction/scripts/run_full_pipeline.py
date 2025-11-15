@@ -149,18 +149,52 @@ def main():
             df = pd.read_csv(top100_file)
             print(f"\n📈 Summary:")
             print(f"   Total tracts in top 100: {len(df)}")
-            print(f"   Risk probability range: {df['probability_pct'].min():.2f}% - {df['probability_pct'].max():.2f}%")
-            print(f"   Average risk probability: {df['probability_pct'].mean():.2f}%")
-            print(f"\n   Top 5 states:")
-            for state, count in df['State'].value_counts().head(5).items():
-                print(f"     {state}: {count} tracts")
             
-            print(f"\n   Top 5 highest risk tracts:")
-            top5 = df.head(5)
-            for _, row in top5.iterrows():
-                print(f"     Rank {row['Rank']}: Tract {row['CensusTract']}, {row['County']}, {row['State']} ({row['probability_pct']:.2f}%)")
+            # Check if risk_probability column exists (new format) or probability_pct (old format)
+            if 'risk_probability' in df.columns:
+                risk_col = 'risk_probability'
+                # Convert to percentage for display
+                risk_min = df[risk_col].min() * 100
+                risk_max = df[risk_col].max() * 100
+                risk_mean = df[risk_col].mean() * 100
+                print(f"   Risk probability range: {risk_min:.2f}% - {risk_max:.2f}%")
+                print(f"   Average risk probability: {risk_mean:.2f}%")
+            elif 'probability_pct' in df.columns:
+                print(f"   Risk probability range: {df['probability_pct'].min():.2f}% - {df['probability_pct'].max():.2f}%")
+                print(f"   Average risk probability: {df['probability_pct'].mean():.2f}%")
+            
+            # Check for SVI score
+            if 'svi_score' in df.columns:
+                print(f"   SVI score range: {df['svi_score'].min():.2f} - {df['svi_score'].max():.2f}")
+                print(f"   Average SVI score: {df['svi_score'].mean():.2f}")
+            
+            # Show top 5 tracts (if we have tract_id)
+            if 'tract_id' in df.columns:
+                print(f"\n   Top 5 highest risk tracts:")
+                top5 = df.head(5)
+                for idx, (_, row) in enumerate(top5.iterrows(), 1):
+                    tract_id = str(row['tract_id']).zfill(11)
+                    risk = row.get('risk_probability', row.get('probability_pct', 0))
+                    if isinstance(risk, float) and risk <= 1.0:
+                        risk_display = f"{risk * 100:.2f}%"
+                    else:
+                        risk_display = f"{risk:.2f}%"
+                    print(f"     Rank {idx}: Tract {tract_id} (Risk: {risk_display})")
+            elif 'CensusTract' in df.columns and 'State' in df.columns:
+                # Old format with State/County info
+                print(f"\n   Top 5 states:")
+                for state, count in df['State'].value_counts().head(5).items():
+                    print(f"     {state}: {count} tracts")
+                
+                print(f"\n   Top 5 highest risk tracts:")
+                top5 = df.head(5)
+                for _, row in top5.iterrows():
+                    prob = row.get('probability_pct', row.get('risk_probability', 0) * 100)
+                    print(f"     Rank {row['Rank']}: Tract {row['CensusTract']}, {row['County']}, {row['State']} ({prob:.2f}%)")
         except Exception as e:
             print(f"   (Could not load summary: {e})")
+            import traceback
+            traceback.print_exc()
         
         print("\n" + "=" * 60)
         return True

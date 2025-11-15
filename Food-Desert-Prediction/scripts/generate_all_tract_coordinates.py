@@ -18,6 +18,7 @@ import zipfile
 from pathlib import Path
 from tqdm import tqdm
 import time
+import os
 
 BASE_DIR = Path(__file__).parent.parent
 CENSUS_DIR = BASE_DIR / "data" / "01_census_demographics"
@@ -26,40 +27,121 @@ OUTPUT_FILE = CENSUS_DIR / "tract_coordinates.csv"
 
 TIGER_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
-def download_tiger_shapefile(state_fips, year=2022):
-    """Download Census TIGER/Line shapefile for a state."""
+def download_tiger_shapefile(state_fips, year=2022, max_retries=3):
+    """
+    Download Census TIGER/Line shapefile for a state with retry logic.
+    
+    Args:
+        state_fips: 2-digit state FIPS code
+        year: Year of TIGER data
+        max_retries: Maximum number of retry attempts
+    
+    Returns:
+        Path to downloaded shapefile directory, or None if failed
+    """
     state_dir = TIGER_CACHE_DIR / f"state_{state_fips}"
     shapefile_path = state_dir / f"tl_{year}_{state_fips}_tract.shp"
     
+    # Check if already downloaded
     if shapefile_path.exists():
         return state_dir
     
-    print(f"  Downloading TIGER shapefile for state {state_fips}...")
+    url = f"https://www2.census.gov/geo/tiger/TIGER{year}/TRACT/tl_{year}_{state_fips}_tract.zip"
+    zip_path = state_dir / f"tl_{year}_{state_fips}_tract.zip"
+    state_dir.mkdir(parents=True, exist_ok=True)
     
-    try:
-        url = f"https://www2.census.gov/geo/tiger/TIGER{year}/TRACT/tl_{year}_{state_fips}_tract.zip"
-        zip_path = state_dir / f"tl_{year}_{state_fips}_tract.zip"
-        state_dir.mkdir(parents=True, exist_ok=True)
-        
-        response = requests.get(url, stream=True, timeout=60)
-        response.raise_for_status()
-        
-        total_size = int(response.headers.get('content-length', 0))
-        with open(zip_path, 'wb') as f, tqdm(total=total_size, unit='B', unit_scale=True, desc=f"    Downloading") as pbar:
-            for chunk in response.iter_content(chunk_size=8192):
-                if chunk:
-                    f.write(chunk)
-                    pbar.update(len(chunk))
-        
-        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-            zip_ref.extractall(state_dir)
-        
-        zip_path.unlink()
-        return state_dir
-        
-    except Exception as e:
-        print(f"    ⚠ Error downloading state {state_fips}: {e}")
-        return None
+    # Retry logic with exponential backoff
+    for attempt in range(max_retries):
+        try:
+            print(f"  Downloading TIGER shapefile for state {state_fips} (attempt {attempt + 1}/{max_retries})...")
+            
+            # Check if partial download exists and resume
+            resume_header = {}
+            if zip_path.exists() and zip_path.stat().st_size > 0:
+                resume_header['Range'] = f'bytes={zip_path.stat().st_size}-'
+                print(f"    Resuming download from byte {zip_path.stat().st_size}")
+            
+            # Use longer timeout and allow redirects
+            response = requests.get(
+                url, 
+                stream=True, 
+                timeout=(30, 300),  # (connect timeout, read timeout) - 5 min read timeout
+                headers=resume_header,
+                allow_redirects=True
+            )
+            response.raise_for_status()
+            
+            # Get total size
+            if 'content-range' in response.headers:
+                # Resuming download
+                total_size = int(response.headers['content-range'].split('/')[-1])
+                mode = 'ab'  # Append mode for resume
+                initial_pos = zip_path.stat().st_size
+            else:
+                total_size = int(response.headers.get('content-length', 0))
+                mode = 'wb'  # Write mode for new download
+                initial_pos = 0
+            
+            # Download with progress bar
+            with open(zip_path, mode) as f, tqdm(
+                total=total_size, 
+                initial=initial_pos,
+                unit='B', 
+                unit_scale=True, 
+                desc=f"    Downloading",
+                unit_divisor=1024
+            ) as pbar:
+                for chunk in response.iter_content(chunk_size=8192 * 4):  # Larger chunk size
+                    if chunk:
+                        f.write(chunk)
+                        pbar.update(len(chunk))
+            
+            # Verify download completed
+            if zip_path.exists() and zip_path.stat().st_size > 0:
+                # Try to extract to verify zip is valid
+                try:
+                    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                        zip_ref.testzip()  # Test zip integrity
+                        zip_ref.extractall(state_dir)
+                    
+                    # Verify shapefile exists after extraction
+                    if shapefile_path.exists():
+                        # Remove zip to save space
+                        zip_path.unlink()
+                        print(f"    ✓ Downloaded and extracted TIGER shapefile for state {state_fips}")
+                        return state_dir
+                    else:
+                        raise ValueError("Shapefile not found after extraction")
+                except zipfile.BadZipFile:
+                    # Zip file is corrupted, delete and retry
+                    zip_path.unlink()
+                    raise ValueError("Corrupted zip file")
+            
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+            if attempt < max_retries - 1:
+                wait_time = (2 ** attempt) * 5  # Exponential backoff: 5s, 10s, 20s
+                print(f"    ⚠ Timeout/Connection error (attempt {attempt + 1}/{max_retries}): {e}")
+                print(f"    Retrying in {wait_time} seconds...")
+                time.sleep(wait_time)
+            else:
+                print(f"    ⚠ Failed after {max_retries} attempts: {e}")
+                # Clean up partial download
+                if zip_path.exists():
+                    zip_path.unlink()
+                return None
+        except Exception as e:
+            print(f"    ⚠ Error downloading state {state_fips}: {e}")
+            # Clean up partial download
+            if zip_path.exists():
+                zip_path.unlink()
+            if attempt < max_retries - 1:
+                wait_time = (2 ** attempt) * 2
+                print(f"    Retrying in {wait_time} seconds...")
+                time.sleep(wait_time)
+            else:
+                return None
+    
+    return None
 
 def extract_tract_coordinates_from_state(state_fips, year=2022):
     """Extract tract coordinates from a state's TIGER shapefile."""
@@ -131,25 +213,61 @@ def main():
     print("=" * 60)
     print("Generating Complete Tract Coordinates File")
     print("=" * 60)
-    print(f"\nThis will download TIGER shapefiles for all 50 states + DC + territories")
+    print(f"\nThis will download TIGER shapefiles for all 50 U.S. states")
     print(f"and extract tract centroids. This may take 30-60 minutes.\n")
     
-    # Get all state FIPS codes (01-56)
-    state_fips = [f"{i:02d}" for i in range(1, 57)]
+    # Get FIPS codes for 50 U.S. states only (excluding DC and territories)
+    # Standard FIPS codes: 01-02, 04-06, 08-13, 15-42, 44-49, 51, 53-56
+    # Excluded: 03, 07, 11 (DC), 14, 43, 52, and territories (60, 66, 69, 72, 78)
+    valid_state_fips = [
+        '01', '02',  # Alabama, Alaska
+        '04', '05', '06',  # Arizona, Arkansas, California
+        '08', '09', '10',  # Colorado, Connecticut, Delaware
+        '12', '13',  # Florida, Georgia
+        '15', '16', '17', '18', '19',  # Hawaii, Idaho, Illinois, Indiana, Iowa
+        '20', '21', '22',  # Kansas, Kentucky, Louisiana
+        '23', '24', '25', '26', '27', '28', '29',  # Maine, Maryland, Massachusetts, Michigan, Minnesota, Mississippi, Missouri
+        '30', '31', '32', '33', '34', '35',  # Montana, Nebraska, Nevada, New Hampshire, New Jersey, New Mexico
+        '36', '37', '38', '39',  # New York, North Carolina, North Dakota, Ohio
+        '40', '41', '42',  # Oklahoma, Oregon, Pennsylvania
+        '44', '45', '46', '47', '48', '49',  # Rhode Island, South Carolina, South Dakota, Tennessee, Texas, Utah
+        '50', '51',  # Vermont, Virginia
+        '53', '54', '55', '56'  # Washington, West Virginia, Wisconsin, Wyoming
+    ]
+    state_fips = valid_state_fips
     
     all_coords = []
     failed_states = []
     
-    print(f"Processing {len(state_fips)} states/territories...\n")
+    print(f"Processing {len(state_fips)} U.S. states...\n")
+    
+    # Check for existing partial results
+    existing_coords = []
+    if OUTPUT_FILE.exists():
+        try:
+            existing_df = pd.read_csv(OUTPUT_FILE)
+            existing_coords = existing_df.to_dict('records')
+            print(f"  Found existing coordinate file with {len(existing_coords)} tracts")
+            print(f"  Will append new coordinates and update existing ones\n")
+        except:
+            pass
+    
+    # Create a dictionary for faster lookups and updates (preserves existing, updates with new)
+    coords_dict = {c['tract_id']: c for c in existing_coords} if existing_coords else {}
     
     for state_fips_code in tqdm(state_fips, desc="Processing states"):
         coords = extract_tract_coordinates_from_state(state_fips_code)
         if coords:
-            all_coords.extend(coords)
+            # Update dictionary with new coordinates (overwrites existing if same tract_id)
+            for coord in coords:
+                coords_dict[coord['tract_id']] = coord
             print(f"  State {state_fips_code}: {len(coords)} tracts")
         else:
             failed_states.append(state_fips_code)
-        time.sleep(0.5)  # Be polite to the server
+        time.sleep(1)  # Be polite to the server (increased delay)
+    
+    # Convert dictionary back to list
+    all_coords = list(coords_dict.values())
     
     if not all_coords:
         print("\n⚠ No coordinates extracted. Check network connection and try again.")
@@ -158,13 +276,16 @@ def main():
     # Create DataFrame
     df = pd.DataFrame(all_coords)
     
+    # Ensure tract_id is string type for consistent sorting
+    df['tract_id'] = df['tract_id'].astype(str).str.zfill(11)
+    
     # Remove duplicates (keep first)
     initial_count = len(df)
     df = df.drop_duplicates(subset=['tract_id'], keep='first')
     if len(df) < initial_count:
         print(f"\n  Removed {initial_count - len(df)} duplicate tract IDs")
     
-    # Sort by tract_id
+    # Sort by tract_id (now all strings, will sort correctly)
     df = df.sort_values('tract_id').reset_index(drop=True)
     
     # Save to CSV

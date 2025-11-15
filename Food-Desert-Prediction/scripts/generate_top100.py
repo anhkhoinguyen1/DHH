@@ -14,6 +14,7 @@ import zipfile
 from pathlib import Path
 from tqdm import tqdm
 import os
+import time
 
 # Set up paths
 BASE_DIR = Path(__file__).parent.parent
@@ -60,16 +61,34 @@ def download_tiger_shapefile(state_fips, year=2022):
         zip_path = state_dir / f"tl_{year}_{state_fips}_tract.zip"
         state_dir.mkdir(parents=True, exist_ok=True)
         
-        # Download zip file
-        response = requests.get(url, stream=True, timeout=60)
-        response.raise_for_status()
-        
-        total_size = int(response.headers.get('content-length', 0))
-        with open(zip_path, 'wb') as f, tqdm(total=total_size, unit='B', unit_scale=True, desc=f"      Downloading") as pbar:
-            for chunk in response.iter_content(chunk_size=8192):
-                if chunk:
-                    f.write(chunk)
-                    pbar.update(len(chunk))
+        # Download zip file with retry logic
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                response = requests.get(
+                    url, 
+                    stream=True, 
+                    timeout=(30, 300),  # (connect timeout, read timeout) - 5 min read timeout
+                    allow_redirects=True
+                )
+                response.raise_for_status()
+                
+                total_size = int(response.headers.get('content-length', 0))
+                with open(zip_path, 'wb') as f, tqdm(total=total_size, unit='B', unit_scale=True, desc=f"      Downloading") as pbar:
+                    for chunk in response.iter_content(chunk_size=8192 * 4):  # Larger chunk size
+                        if chunk:
+                            f.write(chunk)
+                            pbar.update(len(chunk))
+                break  # Success, exit retry loop
+            except (requests.exceptions.Timeout, requests.exceptions.ConnectionError) as e:
+                if attempt < max_retries - 1:
+                    wait_time = (2 ** attempt) * 5  # Exponential backoff
+                    print(f"      ⚠ Timeout (attempt {attempt + 1}/{max_retries}), retrying in {wait_time}s...")
+                    time.sleep(wait_time)
+                    if zip_path.exists():
+                        zip_path.unlink()  # Remove partial download
+                else:
+                    raise
         
         # Extract zip file
         with zipfile.ZipFile(zip_path, 'r') as zip_ref:
@@ -130,10 +149,11 @@ def load_tract_coordinates_from_csv():
 
 def get_tract_coordinates(tract_data):
     """
-    Get latitude/longitude for census tracts.
+    Get latitude/longitude for census tracts with robust fallback strategies.
     
-    First tries to load from user-provided CSV file.
-    Falls back to Census TIGER/Line shapefiles if CSV not available.
+    Strategy 1: Load from comprehensive CSV file (fastest, most complete)
+    Strategy 2: Download and process TIGER/Line shapefiles for missing tracts
+    Strategy 3: Try alternative tract ID formats and matching methods
     
     Args:
         tract_data: DataFrame with 'tract_id' column (11-digit codes)
@@ -141,120 +161,155 @@ def get_tract_coordinates(tract_data):
     Returns:
         Dictionary mapping tract_id to (lat, lon) tuple
     """
-    # First, try to load from user-provided CSV file
+    # Extract unique tract IDs and normalize format
+    tract_ids = tract_data['tract_id'].astype(str).str.zfill(11).unique().tolist()
+    coords_dict = {}
+    
+    # Strategy 1: Load from comprehensive CSV file first
     csv_coords = load_tract_coordinates_from_csv()
     if csv_coords:
-        # Check if we have all the tracts we need
-        tract_ids = tract_data['tract_id'].astype(str).str.zfill(11).unique().tolist()
-        missing = [tid for tid in tract_ids if tid not in csv_coords]
-        if len(missing) == 0:
+        print(f"  Loaded {len(csv_coords)} coordinates from CSV file")
+        for tract_id in tract_ids:
+            if tract_id in csv_coords:
+                coords_dict[tract_id] = csv_coords[tract_id]
+        
+        missing_from_csv = [tid for tid in tract_ids if tid not in coords_dict or coords_dict[tid] == (None, None)]
+        if len(missing_from_csv) == 0:
             print("  ✓ All tract coordinates found in CSV file")
-            return csv_coords
+            return coords_dict
         else:
-            print(f"  ⚠ CSV file missing {len(missing)} tracts, will supplement with TIGER data")
-            # Continue to TIGER download for missing tracts
+            print(f"  ⚠ CSV file missing {len(missing_from_csv)} tracts, supplementing with TIGER data")
     
-    print("  Getting tract coordinates from Census TIGER/Line shapefiles...")
-    
-    # Extract unique tract IDs
-    tract_ids = tract_data['tract_id'].astype(str).str.zfill(11).unique().tolist()
-    
-    # Group tracts by state (first 2 digits of tract ID)
-    tracts_by_state = {}
-    for tract_id in tract_ids:
-        state_fips = tract_id[:2]
-        if state_fips not in tracts_by_state:
-            tracts_by_state[state_fips] = []
-        tracts_by_state[state_fips].append(tract_id)
-    
-    coords_dict = {}
-    year = 2022  # Use 2022 TIGER data (most recent)
-    
-    print(f"  Processing {len(tracts_by_state)} states...")
-    
-    for state_fips, state_tracts in tracts_by_state.items():
-        print(f"  State {state_fips}: {len(state_tracts)} tracts")
+    # Strategy 2: Get missing tracts from TIGER shapefiles
+    missing = [tid for tid in tract_ids if tid not in coords_dict or coords_dict[tid] == (None, None)]
+    if missing:
+        print(f"  Getting coordinates for {len(missing)} missing tracts from Census TIGER/Line shapefiles...")
         
-        # Download TIGER shapefile if needed
-        state_dir = download_tiger_shapefile(state_fips, year)
-        if state_dir is None:
-            # If download fails, mark all tracts for this state as missing
-            for tract_id in state_tracts:
-                coords_dict[tract_id] = (None, None)
-            continue
+        # Group tracts by state (first 2 digits of tract ID)
+        tracts_by_state = {}
+        for tract_id in missing:
+            state_fips = tract_id[:2]
+            if state_fips not in tracts_by_state:
+                tracts_by_state[state_fips] = []
+            tracts_by_state[state_fips].append(tract_id)
         
-        # Load shapefile
-        shapefile_path = state_dir / f"tl_{year}_{state_fips}_tract.shp"
-        if not shapefile_path.exists():
-            print(f"    ⚠ Shapefile not found: {shapefile_path}")
-            for tract_id in state_tracts:
-                coords_dict[tract_id] = (None, None)
-            continue
+        year = 2022  # Use 2022 TIGER data (most recent)
+        print(f"  Processing {len(tracts_by_state)} states...")
         
-        try:
-            # Read shapefile with geopandas
-            gdf = gpd.read_file(shapefile_path)
+        for state_fips, state_tracts in tracts_by_state.items():
+            print(f"  State {state_fips}: {len(state_tracts)} tracts")
             
-            # Extract GEOID from shapefile (format: SSCCCTTTTTT)
-            # TIGER shapefiles use GEOID column
-            if 'GEOID' in gdf.columns:
-                gdf['TRACT_GEOID'] = gdf['GEOID'].astype(str).str.zfill(11)
-            elif 'TRACTCE' in gdf.columns and 'STATEFP' in gdf.columns and 'COUNTYFP' in gdf.columns:
-                # Construct GEOID from components
-                gdf['TRACT_GEOID'] = (
-                    gdf['STATEFP'].astype(str).str.zfill(2) +
-                    gdf['COUNTYFP'].astype(str).str.zfill(3) +
-                    gdf['TRACTCE'].astype(str).str.zfill(6)
-                )
-            else:
-                print(f"    ⚠ Could not find GEOID column in shapefile")
-                for tract_id in state_tracts:
-                    coords_dict[tract_id] = (None, None)
+            # Download TIGER shapefile if needed
+            state_dir = download_tiger_shapefile(state_fips, year)
+            if state_dir is None:
+                print(f"    ⚠ Failed to download TIGER shapefile for state {state_fips}")
                 continue
             
-            # Calculate centroids (in WGS84 / EPSG:4326)
-            if gdf.crs is None:
-                # Assume it's in WGS84 if no CRS specified
-                gdf.set_crs(epsg=4326, inplace=True)
-            elif gdf.crs.to_string() != 'EPSG:4326':
-                # Reproject to WGS84 if needed
-                gdf = gdf.to_crs(epsg=4326)
+            # Load shapefile
+            shapefile_path = state_dir / f"tl_{year}_{state_fips}_tract.shp"
+            if not shapefile_path.exists():
+                print(f"    ⚠ Shapefile not found: {shapefile_path}")
+                continue
             
-            # Get centroids
-            centroids = gdf.geometry.centroid
-            gdf['lat'] = centroids.y
-            gdf['lon'] = centroids.x
-            
-            # Match tracts
-            state_success_count = 0
-            for tract_id in state_tracts:
-                tract_match = gdf[gdf['TRACT_GEOID'] == tract_id]
-                if len(tract_match) > 0:
-                    lat = float(tract_match.iloc[0]['lat'])
-                    lon = float(tract_match.iloc[0]['lon'])
-                    coords_dict[tract_id] = (lat, lon)
-                    state_success_count += 1
+            try:
+                # Read shapefile with geopandas
+                gdf = gpd.read_file(shapefile_path)
+                
+                # Strategy 2a: Try multiple GEOID extraction methods
+                if 'GEOID' in gdf.columns:
+                    gdf['TRACT_GEOID'] = gdf['GEOID'].astype(str).str.zfill(11)
+                elif all(col in gdf.columns for col in ['STATEFP', 'COUNTYFP', 'TRACTCE']):
+                    # Construct GEOID from components
+                    gdf['TRACT_GEOID'] = (
+                        gdf['STATEFP'].astype(str).str.zfill(2) +
+                        gdf['COUNTYFP'].astype(str).str.zfill(3) +
+                        gdf['TRACTCE'].astype(str).str.zfill(6)
+                    )
                 else:
-                    coords_dict[tract_id] = (None, None)
-            
-            print(f"    ✓ Found coordinates for {state_success_count}/{len(state_tracts)} tracts")
-            
-        except Exception as e:
-            print(f"    ⚠ Error processing shapefile for state {state_fips}: {e}")
-            import traceback
-            traceback.print_exc()
-            for tract_id in state_tracts:
-                coords_dict[tract_id] = (None, None)
+                    print(f"    ⚠ Could not extract GEOID from shapefile columns: {list(gdf.columns)}")
+                    continue
+                
+                # Calculate centroids with proper projection
+                if gdf.crs is None:
+                    gdf.set_crs(epsg=4326, inplace=True)
+                elif gdf.crs.to_string() != 'EPSG:4326':
+                    # Project to Albers Equal Area for accurate centroids, then back to WGS84
+                    try:
+                        gdf_projected = gdf.to_crs(epsg=5070)  # US Albers Equal Area
+                        centroids_projected = gdf_projected.geometry.centroid
+                        centroids_gdf = gpd.GeoDataFrame(geometry=centroids_projected, crs='epsg:5070')
+                        centroids = centroids_gdf.to_crs(epsg=4326).geometry
+                        gdf['lat'] = centroids.y
+                        gdf['lon'] = centroids.x
+                    except:
+                        # Fallback to simple centroid if projection fails
+                        gdf = gdf.to_crs(epsg=4326)
+                        centroids = gdf.geometry.centroid
+                        gdf['lat'] = centroids.y
+                        gdf['lon'] = centroids.x
+                else:
+                    # Already in WGS84
+                    centroids = gdf.geometry.centroid
+                    gdf['lat'] = centroids.y
+                    gdf['lon'] = centroids.x
+                
+                # Match tracts with multiple matching strategies
+                state_success_count = 0
+                for tract_id in state_tracts:
+                    # Try exact match first
+                    tract_match = gdf[gdf['TRACT_GEOID'] == tract_id]
+                    
+                    if len(tract_match) == 0:
+                        # Try matching without leading zeros
+                        tract_match = gdf[gdf['TRACT_GEOID'].astype(str).str.lstrip('0') == tract_id.lstrip('0')]
+                    
+                    if len(tract_match) == 0:
+                        # Try matching last 11 digits (in case of prefix)
+                        tract_suffix = tract_id[-11:] if len(tract_id) > 11 else tract_id
+                        tract_match = gdf[gdf['TRACT_GEOID'].astype(str).str[-11:] == tract_suffix]
+                    
+                    if len(tract_match) > 0:
+                        try:
+                            lat = float(tract_match.iloc[0]['lat'])
+                            lon = float(tract_match.iloc[0]['lon'])
+                            # Validate coordinates are reasonable (within US bounds)
+                            if -180 <= lon <= 180 and -90 <= lat <= 90:
+                                coords_dict[tract_id] = (lat, lon)
+                                state_success_count += 1
+                            else:
+                                coords_dict[tract_id] = (None, None)
+                        except (ValueError, KeyError) as e:
+                            coords_dict[tract_id] = (None, None)
+                    else:
+                        coords_dict[tract_id] = (None, None)
+                
+                print(f"    ✓ Found coordinates for {state_success_count}/{len(state_tracts)} tracts")
+                
+            except Exception as e:
+                print(f"    ⚠ Error processing shapefile for state {state_fips}: {e}")
+                import traceback
+                traceback.print_exc()
+                # Don't mark as missing yet - might be in CSV
     
-    # Merge with CSV coordinates if available
+    # Strategy 3: Final merge with CSV coordinates (in case CSV had updates)
     if csv_coords:
         for tract_id, coords in csv_coords.items():
-            if tract_id not in coords_dict or coords_dict[tract_id] == (None, None):
+            if tract_id in tract_ids and (tract_id not in coords_dict or coords_dict[tract_id] == (None, None)):
                 coords_dict[tract_id] = coords
     
-    # Count successful geocodes
+    # Final validation and reporting
     successful = sum(1 for v in coords_dict.values() if v[0] is not None and v[1] is not None)
-    print(f"  ✓ Successfully geocoded {successful}/{len(coords_dict)} tracts")
+    missing_final = [tid for tid in tract_ids if coords_dict.get(tid) == (None, None)]
+    
+    print(f"  ✓ Successfully geocoded {successful}/{len(tract_ids)} tracts")
+    
+    if missing_final:
+        print(f"  ⚠ WARNING: {len(missing_final)} tracts still missing coordinates:")
+        for tid in missing_final[:10]:  # Show first 10
+            print(f"    - {tid}")
+        if len(missing_final) > 10:
+            print(f"    ... and {len(missing_final) - 10} more")
+        print(f"  Recommendation: Run 'python scripts/generate_all_tract_coordinates.py' to generate complete coordinate file")
     
     return coords_dict
 
@@ -569,20 +624,45 @@ def generate_top100():
     # Map coordinates to output
     lat_list = []
     lon_list = []
+    missing_coords_tracts = []
+    
     for tract_id in output['tract_id']:
         lat, lon = tract_coords.get(tract_id, (None, None))
         if lat is not None and lon is not None:
-            lat_list.append(f"{lat:.6f}")
-            lon_list.append(f"{lon:.6f}")
+            # Validate coordinates are reasonable
+            if -180 <= lon <= 180 and -90 <= lat <= 90:
+                lat_list.append(f"{lat:.6f}")
+                lon_list.append(f"{lon:.6f}")
+            else:
+                print(f"  ⚠ Invalid coordinates for tract {tract_id}: lat={lat}, lon={lon}")
+                lat_list.append("")
+                lon_list.append("")
+                missing_coords_tracts.append(tract_id)
         else:
             lat_list.append("")
             lon_list.append("")
+            missing_coords_tracts.append(tract_id)
     
     output['lat'] = lat_list
     output['lon'] = lon_list
     
     geocoded_count = sum(1 for lat, lon in zip(lat_list, lon_list) if lat and lon)
-    print(f"✓ Geocoded {geocoded_count}/{len(output)} tracts\n")
+    print(f"✓ Geocoded {geocoded_count}/{len(output)} tracts")
+    
+    # Validation: Check for missing coordinates before saving
+    if missing_coords_tracts:
+        print(f"\n⚠ WARNING: {len(missing_coords_tracts)} tracts are missing coordinates:")
+        for tid in missing_coords_tracts[:10]:
+            print(f"    - {tid}")
+        if len(missing_coords_tracts) > 10:
+            print(f"    ... and {len(missing_coords_tracts) - 10} more")
+        print(f"\n  To fix missing coordinates:")
+        print(f"    1. Run: python scripts/generate_all_tract_coordinates.py")
+        print(f"    2. This will generate a complete tract_coordinates.csv file")
+        print(f"    3. Then re-run: python scripts/generate_top100.py")
+        print(f"\n  Continuing with output (missing coordinates will be empty)...\n")
+    else:
+        print("  ✓ All tracts have coordinates!\n")
     
     # Required: risk_probability (0-1)
     output['risk_probability'] = top100['probability'].clip(0, 1).round(4)
