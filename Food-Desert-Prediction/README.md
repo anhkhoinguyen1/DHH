@@ -31,6 +31,7 @@ The program integrates multiple publicly available data sources:
   - Housing affordability pressures
   - Health outcome correlations
   - Infrastructure accessibility
+- **Generates geographic coverage map**: Visual map of the contiguous United States showing all census tracts with data (excluding Alaska and Hawaii)
 
 ### 3. Model Training
 Trains multiple machine learning models:
@@ -47,10 +48,11 @@ Models are evaluated and the best-performing model is selected for predictions.
 
 ### 5. Output
 The final output is a CSV file containing the **top 100 census tracts most likely to become food deserts**, including:
-- Tract identifiers and geographic information
-- Risk probability scores
-- Key risk factors
-- Geographic coordinates for mapping
+- Tract identifiers and geographic information (11-digit tract IDs)
+- Geographic coordinates (latitude, longitude) for mapping
+- Risk probability scores (0-1, predicted likelihood of becoming food desert)
+- Demand estimates (weekly grocery shopping demand in households)
+- **Social Vulnerability Index (SVI)** scores (0-1, composite measure of social vulnerability)
 
 ## Project Structure
 
@@ -92,6 +94,7 @@ Food-Desert-Prediction/
 - **5 major data categories**: Demographics, food access, health, housing, infrastructure
 - **Multiple time periods**: Historical data (2015) and current data (2019) for trend analysis
 - **Geographic coverage**: All U.S. census tracts (~72,000 tracts)
+- **Data visualization**: Geographic map showing census tract data coverage across the contiguous United States
 
 ### Machine Learning Pipeline
 - **Feature engineering**: 50+ features from multiple data sources
@@ -118,6 +121,16 @@ The model predicts whether a census tract will become a "low-income and low-acce
 3. **Demographics** (15% weight): Age, race/ethnicity, household composition
 4. **Housing & Economics** (20% weight): Rent burden, housing costs, market volatility
 5. **Infrastructure** (10% weight): Grocery store density, transit access
+
+### Social Vulnerability Index (SVI)
+The program calculates a **Social Vulnerability Index (SVI)** for each tract, based on CDC/ATSDR methodology adapted to available data. SVI is a composite measure [0-1] where higher values indicate higher vulnerability:
+
+1. **Socioeconomic Status** (30%): Poverty rate, income level, education attainment, rent burden
+2. **Household Composition** (25%): Low-income households, vehicle ownership (transportation vulnerability)
+3. **Minority Status & Language** (25%): Indicators of historically underserved communities
+4. **Housing & Transportation** (20%): Housing crowding, vehicle access, rent burden
+
+SVI helps identify tracts where social vulnerability compounds food access challenges, enabling more targeted interventions.
 
 ### Model Training
 - Uses historical data (2015-2019) to train on actual transitions
@@ -153,6 +166,37 @@ The model predicts whether a census tract will become a "low-income and low-acce
 
 ## Getting Started
 
+### Prerequisites
+- Python 3.8 or higher
+- 8GB+ RAM recommended (for processing large datasets)
+- Internet connection for data collection
+- Free Census API key from https://api.census.gov/key.html
+
+### Installation
+
+1. **Clone the repository:**
+```bash
+git clone https://github.com/yourusername/Food-Desert-Prediction.git
+cd Food-Desert-Prediction
+```
+
+2. **Create and activate virtual environment:**
+```bash
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+3. **Install dependencies:**
+```bash
+pip install -r requirements.txt
+```
+
+4. **Set up environment variables:**
+```bash
+cp .env.example .env
+# Edit .env and add your Census API key
+```
+
 See **QUICKSTART.md** for detailed setup and usage instructions.
 
 ## Data Sources
@@ -163,6 +207,12 @@ See **docs/sources.txt** for complete documentation of all data sources, includi
 - Update frequencies
 - Licensing information
 - Citation requirements
+
+## Methodology
+
+See **docs/strategy.md** for detailed modeling strategy and feature weighting.
+
+See **docs/SVI_METHODOLOGY.md** for Social Vulnerability Index (SVI) calculation methodology.
 
 ## Citation
 

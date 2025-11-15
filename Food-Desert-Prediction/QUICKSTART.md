@@ -14,14 +14,17 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-3. **Set up environment variables (optional):**
+3. **Set up environment variables:**
 ```bash
-# Create .env file in the project root
-# Add your Census API key if you want to collect Census data
-CENSUS_API_KEY=6205f0177bed71504e79ebea544554392d66b01e
+# Copy the example environment file
+cp .env.example .env
+
+# Edit .env and add your Census API key
+# Get a free API key at: https://api.census.gov/key.html
+# Replace YOUR_API_KEY_HERE with your actual API key
 ```
 
-**Note:** The `.env` file has been created with your API key. If you need to update it, edit `.env` directly.
+**Note:** The `.env` file is gitignored for security. Each user should create their own `.env` file with their API key.
 
 ## Data Collection
 
@@ -66,7 +69,8 @@ Outputs:
 - `data/processed/food_access_2015.csv` - Processed Food Access Atlas 2015 (if available)
 - `data/processed/change_features_2015_2019.csv` - Change metrics between years (if available)
 - `data/processed/target_variable.csv` - Target variable for model training (if available)
-- `data/processed/data_coverage_map.png` - Map showing data coverage by state
+- `data/processed/data_coverage_map.png` - **Geographic map** showing census tract data coverage across the contiguous United States (excluding Alaska and Hawaii). Tracts with data are plotted as points on a map of the US.
+- `data/processed/data_coverage_summary.csv` - Summary statistics of data coverage by state
 - `data/features/modeling_features.csv` - Final feature set for modeling
 
 ## Model Training
@@ -122,10 +126,14 @@ This will:
 - Create formatted output files
 
 Outputs:
-- `data/predictions/top100_highest_risk_tracts.csv` - CSV format for analysis
+- `data/predictions/top100_highest_risk_tracts.csv` - **Final output CSV** with columns:
+  - `tract_id`: 11-digit census tract identifier
+  - `lat`, `lon`: Geographic coordinates
+  - `risk_probability`: Predicted probability of becoming food desert (0-1)
+  - `demand_mean`, `demand_std`: Estimated weekly grocery shopping demand
+  - `svi_score`: Social Vulnerability Index (0-1, higher = more vulnerable)
 - `data/predictions/top100_highest_risk_tracts.txt` - Human-readable text format
 - `data/predictions/top100_highest_risk_tracts.md` - Markdown format with tables
-- `TOP100_SUMMARY.md` - Summary analysis and recommendations (in project root)
 
 ## Start API
 

@@ -85,9 +85,55 @@ def download_tiger_shapefile(state_fips, year=2022):
         print(f"    ⚠ Error downloading TIGER shapefile for state {state_fips}: {e}")
         return None
 
+def load_tract_coordinates_from_csv():
+    """
+    Load tract coordinates from CSV file if provided by user.
+    
+    Returns:
+        Dictionary mapping tract_id to (lat, lon) tuple, or None if file doesn't exist
+    """
+    coords_file = BASE_DIR / "data" / "01_census_demographics" / "tract_coordinates.csv"
+    if not coords_file.exists():
+        return None
+    
+    try:
+        print("  Checking for user-provided coordinates file...")
+        df = pd.read_csv(coords_file)
+        
+        # Validate required columns
+        required_cols = ['tract_id', 'lat', 'lon']
+        missing_cols = [col for col in required_cols if col not in df.columns]
+        if missing_cols:
+            print(f"  ⚠ Missing required columns: {missing_cols}")
+            return None
+        
+        # Convert tract_id to string and pad to 11 digits
+        df['tract_id'] = df['tract_id'].astype(str).str.zfill(11)
+        
+        # Remove rows with missing coordinates
+        df = df.dropna(subset=['lat', 'lon'])
+        
+        # Create dictionary
+        coords_dict = {}
+        for _, row in df.iterrows():
+            tract_id = str(row['tract_id']).zfill(11)
+            lat = float(row['lat'])
+            lon = float(row['lon'])
+            coords_dict[tract_id] = (lat, lon)
+        
+        print(f"  ✓ Loaded {len(coords_dict)} tract coordinates from CSV file")
+        return coords_dict
+        
+    except Exception as e:
+        print(f"  ⚠ Error loading coordinates from CSV: {e}")
+        return None
+
 def get_tract_coordinates(tract_data):
     """
-    Get latitude/longitude for census tracts using Census TIGER/Line shapefiles.
+    Get latitude/longitude for census tracts.
+    
+    First tries to load from user-provided CSV file.
+    Falls back to Census TIGER/Line shapefiles if CSV not available.
     
     Args:
         tract_data: DataFrame with 'tract_id' column (11-digit codes)
@@ -95,6 +141,19 @@ def get_tract_coordinates(tract_data):
     Returns:
         Dictionary mapping tract_id to (lat, lon) tuple
     """
+    # First, try to load from user-provided CSV file
+    csv_coords = load_tract_coordinates_from_csv()
+    if csv_coords:
+        # Check if we have all the tracts we need
+        tract_ids = tract_data['tract_id'].astype(str).str.zfill(11).unique().tolist()
+        missing = [tid for tid in tract_ids if tid not in csv_coords]
+        if len(missing) == 0:
+            print("  ✓ All tract coordinates found in CSV file")
+            return csv_coords
+        else:
+            print(f"  ⚠ CSV file missing {len(missing)} tracts, will supplement with TIGER data")
+            # Continue to TIGER download for missing tracts
+    
     print("  Getting tract coordinates from Census TIGER/Line shapefiles...")
     
     # Extract unique tract IDs
@@ -187,11 +246,216 @@ def get_tract_coordinates(tract_data):
             for tract_id in state_tracts:
                 coords_dict[tract_id] = (None, None)
     
+    # Merge with CSV coordinates if available
+    if csv_coords:
+        for tract_id, coords in csv_coords.items():
+            if tract_id not in coords_dict or coords_dict[tract_id] == (None, None):
+                coords_dict[tract_id] = coords
+    
     # Count successful geocodes
     successful = sum(1 for v in coords_dict.values() if v[0] is not None and v[1] is not None)
     print(f"  ✓ Successfully geocoded {successful}/{len(coords_dict)} tracts")
     
     return coords_dict
+
+def calculate_svi_score(tract_data):
+    """
+    Calculate Social Vulnerability Index (SVI) score for each tract.
+    
+    SVI is a composite measure of social vulnerability based on:
+    1. Socioeconomic Status (30%): Poverty, income, education, employment
+    2. Household Composition (25%): Age, disability, single-parent households
+    3. Minority Status & Language (25%): Race/ethnicity, language barriers
+    4. Housing & Transportation (20%): Crowding, no vehicle, group quarters
+    
+    Returns normalized score [0-1] where higher values indicate higher vulnerability.
+    
+    Based on CDC/ATSDR Social Vulnerability Index methodology, adapted to available data.
+    """
+    svi_scores = []
+    
+    for idx, row in tract_data.iterrows():
+        component_scores = []
+        weights = []
+        
+        # 1. Socioeconomic Status (30% weight)
+        socioeconomic_score = 0.0
+        socioeconomic_weight = 0.0
+        
+        # Poverty rate (0-1, higher = more vulnerable)
+        if 'Census_PovertyRate' in row and pd.notna(row['Census_PovertyRate']):
+            poverty_score = min(row['Census_PovertyRate'] / 100.0, 1.0)  # Cap at 100%
+            socioeconomic_score += poverty_score * 0.4
+            socioeconomic_weight += 0.4
+        elif 'PovertyRate' in row and pd.notna(row['PovertyRate']):
+            poverty_score = min(row['PovertyRate'] / 100.0, 1.0)
+            socioeconomic_score += poverty_score * 0.4
+            socioeconomic_weight += 0.4
+        
+        # Income (0-1, lower income = more vulnerable)
+        if 'Census_MedianHouseholdIncome' in row and pd.notna(row['Census_MedianHouseholdIncome']):
+            # Normalize income: lower = higher vulnerability
+            # Use percentile-based approach: bottom 20% = high vulnerability
+            income = row['Census_MedianHouseholdIncome']
+            if income < 30000:  # Very low income
+                income_score = 1.0
+            elif income < 50000:  # Low income
+                income_score = 0.7
+            elif income < 75000:  # Moderate income
+                income_score = 0.4
+            else:  # Higher income
+                income_score = 0.1
+            socioeconomic_score += income_score * 0.3
+            socioeconomic_weight += 0.3
+        elif 'MedianFamilyIncome' in row and pd.notna(row['MedianFamilyIncome']):
+            income = row['MedianFamilyIncome']
+            if income < 30000:
+                income_score = 1.0
+            elif income < 50000:
+                income_score = 0.7
+            elif income < 75000:
+                income_score = 0.4
+            else:
+                income_score = 0.1
+            socioeconomic_score += income_score * 0.3
+            socioeconomic_weight += 0.3
+        
+        # Education (0-1, lower education = more vulnerable)
+        if 'Census_EducationRate' in row and pd.notna(row['Census_EducationRate']):
+            # Education rate is % with bachelor's degree or higher
+            # Lower education = higher vulnerability
+            edu_score = 1.0 - (row['Census_EducationRate'] / 100.0)
+            edu_score = max(0.0, min(1.0, edu_score))  # Clip to [0, 1]
+            socioeconomic_score += edu_score * 0.2
+            socioeconomic_weight += 0.2
+        
+        # Rent burden (0-1, higher rent burden = more vulnerable)
+        if 'Census_RentBurden' in row and pd.notna(row['Census_RentBurden']):
+            # Rent burden is % of income spent on rent
+            # >30% is considered burdened, >50% is severely burdened
+            rent_burden = row['Census_RentBurden'] / 100.0
+            if rent_burden > 0.5:
+                rent_score = 1.0
+            elif rent_burden > 0.3:
+                rent_score = 0.7
+            else:
+                rent_score = 0.3
+            socioeconomic_score += rent_score * 0.1
+            socioeconomic_weight += 0.1
+        
+        if socioeconomic_weight > 0:
+            socioeconomic_normalized = socioeconomic_score / socioeconomic_weight
+            component_scores.append(socioeconomic_normalized)
+            weights.append(0.30)
+        
+        # 2. Household Composition (25% weight)
+        household_score = 0.0
+        household_weight = 0.0
+        
+        # Age 65+ (proxy for elderly vulnerability)
+        # We don't have direct age data, but can infer from other indicators
+        # For now, use low-income + no vehicle as proxy for vulnerable households
+        if 'LowIncomeTracts' in row and pd.notna(row['LowIncomeTracts']):
+            household_score += float(row['LowIncomeTracts']) * 0.5
+            household_weight += 0.5
+        
+        # No vehicle households (indicates transportation vulnerability)
+        if 'Census_VehicleOwnershipRate' in row and pd.notna(row['Census_VehicleOwnershipRate']):
+            # Lower vehicle ownership = higher vulnerability
+            no_vehicle_score = 1.0 - row['Census_VehicleOwnershipRate']
+            household_score += no_vehicle_score * 0.5
+            household_weight += 0.5
+        elif 'Census_HouseholdsNoVehicle' in row and 'Census_TotalHouseholds' in row:
+            if pd.notna(row['Census_TotalHouseholds']) and row['Census_TotalHouseholds'] > 0:
+                if pd.notna(row['Census_HouseholdsNoVehicle']):
+                    no_vehicle_rate = row['Census_HouseholdsNoVehicle'] / row['Census_TotalHouseholds']
+                    household_score += no_vehicle_rate * 0.5
+                    household_weight += 0.5
+        
+        if household_weight > 0:
+            household_normalized = household_score / household_weight
+            component_scores.append(household_normalized)
+            weights.append(0.25)
+        
+        # 3. Minority Status & Language (25% weight)
+        # Note: We don't have detailed race/ethnicity data in current features
+        # Use low-income tracts as proxy (historically correlated with minority status)
+        # This is a limitation - ideally would use Census race/ethnicity data
+        minority_score = 0.0
+        if 'LowIncomeTracts' in row and pd.notna(row['LowIncomeTracts']):
+            # Low-income areas often correlate with minority communities
+            # This is a simplified proxy
+            minority_score = float(row['LowIncomeTracts']) * 0.6
+        
+        # Use poverty as additional indicator
+        if 'Census_PovertyRate' in row and pd.notna(row['Census_PovertyRate']):
+            poverty_indicator = min(row['Census_PovertyRate'] / 100.0, 1.0)
+            minority_score += poverty_indicator * 0.4
+        
+        if minority_score > 0:
+            minority_normalized = min(minority_score, 1.0)  # Cap at 1.0
+            component_scores.append(minority_normalized)
+            weights.append(0.25)
+        
+        # 4. Housing & Transportation (20% weight)
+        housing_score = 0.0
+        housing_weight = 0.0
+        
+        # No vehicle (transportation vulnerability)
+        if 'Census_VehicleOwnershipRate' in row and pd.notna(row['Census_VehicleOwnershipRate']):
+            no_vehicle_score = 1.0 - row['Census_VehicleOwnershipRate']
+            housing_score += no_vehicle_score * 0.5
+            housing_weight += 0.5
+        elif 'Census_HouseholdsNoVehicle' in row and 'Census_TotalHouseholds' in row:
+            if pd.notna(row['Census_TotalHouseholds']) and row['Census_TotalHouseholds'] > 0:
+                if pd.notna(row['Census_HouseholdsNoVehicle']):
+                    no_vehicle_rate = row['Census_HouseholdsNoVehicle'] / row['Census_TotalHouseholds']
+                    housing_score += no_vehicle_rate * 0.5
+                    housing_weight += 0.5
+        
+        # Housing crowding (average household size as proxy)
+        if 'Census_AvgHouseholdSize' in row and pd.notna(row['Census_AvgHouseholdSize']):
+            # Higher household size = potential crowding
+            avg_size = row['Census_AvgHouseholdSize']
+            if avg_size > 3.0:  # Above average
+                crowding_score = min((avg_size - 2.5) / 2.0, 1.0)  # Normalize
+            else:
+                crowding_score = 0.2
+            housing_score += crowding_score * 0.3
+            housing_weight += 0.3
+        
+        # Rent burden (housing stress)
+        if 'Census_RentBurden' in row and pd.notna(row['Census_RentBurden']):
+            rent_burden = row['Census_RentBurden'] / 100.0
+            if rent_burden > 0.5:
+                rent_score = 1.0
+            elif rent_burden > 0.3:
+                rent_score = 0.7
+            else:
+                rent_score = 0.3
+            housing_score += rent_score * 0.2
+            housing_weight += 0.2
+        
+        if housing_weight > 0:
+            housing_normalized = housing_score / housing_weight
+            component_scores.append(housing_normalized)
+            weights.append(0.20)
+        
+        # Calculate weighted average SVI score
+        if len(component_scores) > 0 and sum(weights) > 0:
+            # Normalize weights to sum to 1.0
+            total_weight = sum(weights)
+            normalized_weights = [w / total_weight for w in weights]
+            
+            svi = sum(score * weight for score, weight in zip(component_scores, normalized_weights))
+            svi = max(0.0, min(1.0, svi))  # Clip to [0, 1]
+        else:
+            # If no data available, use default moderate vulnerability
+            svi = 0.5
+        
+        svi_scores.append(round(svi, 2))
+    
+    return svi_scores
 
 def estimate_demand(tract_data):
     """
@@ -243,7 +507,7 @@ def generate_top100():
     df = load_predictions()
     print(f"✓ Loaded {len(df)} total tracts")
     
-    # Load features for additional data (households, population, etc.)
+    # Load features for additional data (households, population, SVI calculation, etc.)
     features_file = BASE_DIR / "data" / "features" / "modeling_features.csv"
     features_df = None
     if features_file.exists():
@@ -252,15 +516,27 @@ def generate_top100():
             all_features = pd.read_csv(features_file, nrows=1)
             available_cols = ['CensusTract']
             
-            # Check which columns exist
+            # Check which columns exist for demand estimation
             for col in ['HH_TOTAL', 'OHU2010', 'Pop2010', 'Census_TotalHouseholds', 
                        'Census_TotalPopulation', 'LILATracts_1And10', 'HUTOTAL']:
                 if col in all_features.columns:
                     available_cols.append(col)
             
+            # Check which columns exist for SVI calculation
+            svi_cols = [
+                'Census_PovertyRate', 'PovertyRate', 'Census_MedianHouseholdIncome', 
+                'MedianFamilyIncome', 'Census_EducationRate', 'Census_RentBurden',
+                'LowIncomeTracts', 'Census_VehicleOwnershipRate', 
+                'Census_HouseholdsNoVehicle', 'Census_TotalHouseholds',
+                'Census_AvgHouseholdSize'
+            ]
+            for col in svi_cols:
+                if col in all_features.columns and col not in available_cols:
+                    available_cols.append(col)
+            
             features_df = pd.read_csv(features_file, usecols=available_cols)
             features_df['CensusTract'] = features_df['CensusTract'].astype(str)
-            print(f"✓ Loaded features for demand estimation")
+            print(f"✓ Loaded features for demand estimation and SVI calculation")
         except Exception as e:
             print(f"⚠ Could not load features: {e}")
     
@@ -316,13 +592,13 @@ def generate_top100():
     output['demand_mean'] = demand_mean
     output['demand_std'] = demand_std
     
-    # Optional: svi_score (Social Vulnerability Index)
-    # Check if we have SVI data, otherwise leave as empty string
-    if 'svi_score' in top100.columns:
-        output['svi_score'] = top100['svi_score'].clip(0, 1).round(2)
-    else:
-        output['svi_score'] = ''  # Empty string for optional column
-        print("  ⚠ SVI score not available - leaving as empty")
+    # Required: svi_score (Social Vulnerability Index [0-1])
+    print("\nCalculating Social Vulnerability Index (SVI) scores...")
+    svi_scores = calculate_svi_score(top100)
+    output['svi_score'] = svi_scores
+    print(f"✓ Calculated SVI scores for {len(svi_scores)} tracts")
+    print(f"  SVI range: {min(svi_scores):.2f} - {max(svi_scores):.2f}")
+    print(f"  Average SVI: {sum(svi_scores)/len(svi_scores):.2f}")
     
     # Reorder columns to match example: tract_id, lat, lon, risk_probability, demand_mean, demand_std, svi_score
     output = output[['tract_id', 'lat', 'lon', 'risk_probability', 'demand_mean', 'demand_std', 'svi_score']]

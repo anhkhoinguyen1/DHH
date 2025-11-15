@@ -11,6 +11,13 @@ from tqdm import tqdm
 import warnings
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+try:
+    import geopandas as gpd
+    from shapely.geometry import Point
+    GEOPANDAS_AVAILABLE = True
+except ImportError:
+    GEOPANDAS_AVAILABLE = False
+    print("⚠ geopandas not available. Geographic map will use simplified visualization.")
 warnings.filterwarnings('ignore')
 
 # Set up paths - organized data folders
@@ -740,18 +747,56 @@ def main():
     print("=" * 60)
 
 def generate_coverage_map(df_food_access, df_census=None, df_cdc=None):
-    """Generate a map showing data coverage across the US."""
-    print("Creating data coverage visualization...")
+    """Generate a geographic map showing census tract data coverage across the US (excluding Alaska and Hawaii)."""
+    print("Creating geographic data coverage map...")
     
-    # Create coverage summary by state
-    coverage_data = []
+    # Collect all tracts with data
+    tracts_with_data = set()
     
     # Food Access Atlas coverage
+    if df_food_access is not None and 'CensusTract' in df_food_access.columns:
+        tracts_with_data.update(df_food_access['CensusTract'].astype(str).str.zfill(11).unique())
+        print(f"  Found {len(tracts_with_data)} tracts in Food Access Atlas")
+    
+    # Census ACS coverage
+    if df_census is not None:
+        if 'CensusTract' in df_census.columns:
+            tracts_with_data.update(df_census['CensusTract'].astype(str).str.zfill(11).unique())
+        elif 'GEOID' in df_census.columns:
+            # Extract tract from GEOID
+            tract_ids = df_census['GEOID'].astype(str).str.extract(r'(\d{11})$')[0].dropna()
+            tracts_with_data.update(tract_ids.unique())
+        print(f"  Found {len(tracts_with_data)} total tracts with data")
+    
+    # CDC PLACES coverage
+    if df_cdc is not None and 'CensusTract' in df_cdc.columns:
+        tracts_with_data.update(df_cdc['CensusTract'].astype(str).str.zfill(11).unique())
+        print(f"  Found {len(tracts_with_data)} total tracts with data")
+    
+    if not tracts_with_data:
+        print("  ⚠ No tract data available for mapping")
+        return
+    
+    # Try to load tract coordinates
+    tract_coords_file = CENSUS_DIR / "tract_coordinates.csv"
+    tract_coords = None
+    
+    if tract_coords_file.exists():
+        try:
+            print("  Loading tract coordinates from CSV...")
+            tract_coords = pd.read_csv(tract_coords_file)
+            tract_coords['tract_id'] = tract_coords['tract_id'].astype(str).str.zfill(11)
+            print(f"  Loaded {len(tract_coords)} tract coordinates")
+        except Exception as e:
+            print(f"  ⚠ Error loading tract coordinates: {e}")
+    
+    # Create coverage summary by state (for CSV output)
+    coverage_data = []
+    
     if df_food_access is not None and 'State' in df_food_access.columns:
         fa_coverage = df_food_access.groupby('State').size().reset_index(name='FoodAccess_Tracts')
         coverage_data.append(('Food Access Atlas', fa_coverage))
     
-    # Census ACS coverage
     if df_census is not None and 'STATE' in df_census.columns:
         census_coverage = df_census.groupby('STATE').size().reset_index(name='CensusACS_Tracts')
         census_coverage['State'] = census_coverage['STATE'].astype(str).str.zfill(2)
@@ -760,123 +805,231 @@ def generate_coverage_map(df_food_access, df_census=None, df_cdc=None):
         census_coverage = df_census.groupby('State').size().reset_index(name='CensusACS_Tracts')
         coverage_data.append(('Census ACS', census_coverage))
     
-    # CDC PLACES coverage (if available)
     if df_cdc is not None and 'CensusTract' in df_cdc.columns:
-        # Extract state from CensusTract (first 2 digits)
         df_cdc_temp = df_cdc.copy()
         df_cdc_temp['State'] = df_cdc_temp['CensusTract'].astype(str).str[:2]
         cdc_coverage = df_cdc_temp.groupby('State').size().reset_index(name='CDCPLACES_Tracts')
         coverage_data.append(('CDC PLACES', cdc_coverage))
     
     # Create summary DataFrame
-    if not coverage_data:
-        print("  ⚠ No geographic data available for mapping")
-        return
-    
-    # Start with Food Access data (most complete) or first available dataset
     summary = None
-    for name, data in coverage_data:
-        if 'State' in data.columns:
-            summary = data[['State']].copy()
-            break
-        elif 'STATE' in data.columns:
-            data_temp = data.copy()
-            data_temp['State'] = data_temp['STATE'].astype(str).str.zfill(2)
-            summary = data_temp[['State']].copy()
-            break
+    if coverage_data:
+        for name, data in coverage_data:
+            if 'State' in data.columns:
+                summary = data[['State']].copy()
+                break
+            elif 'STATE' in data.columns:
+                data_temp = data.copy()
+                data_temp['State'] = data_temp['STATE'].astype(str).str.zfill(2)
+                summary = data_temp[['State']].copy()
+                break
+        
+        if summary is not None:
+            for name, data in coverage_data:
+                if 'State' in data.columns:
+                    tract_col = [col for col in data.columns if col != 'State' and col != 'STATE'][0]
+                    data_to_merge = data[['State', tract_col]].copy()
+                    summary = pd.merge(summary, data_to_merge, on='State', how='outer', suffixes=('', f'_{name.replace(" ", "_")}'))
+                elif 'STATE' in data.columns:
+                    data_temp = data.copy()
+                    data_temp['State'] = data_temp['STATE'].astype(str).str.zfill(2)
+                    tract_col = [col for col in data_temp.columns if col != 'State' and col != 'STATE'][0]
+                    data_to_merge = data_temp[['State', tract_col]].copy()
+                    summary = pd.merge(summary, data_to_merge, on='State', how='outer', suffixes=('', f'_{name.replace(" ", "_")}'))
+            
+            summary = summary.fillna(0)
+            summary['Total_Tracts'] = summary.select_dtypes(include=[np.number]).sum(axis=1)
+            
+            # Save coverage summary
+            coverage_file = PROCESSED_DATA_DIR / "data_coverage_summary.csv"
+            summary.to_csv(coverage_file, index=False)
+            print(f"  ✓ Coverage summary saved to: {coverage_file}")
     
-    if summary is None:
-        print("  ⚠ Could not create coverage map - no state identifiers found")
-        return
-    
-    # Merge all coverage data
-    for name, data in coverage_data:
-        if 'State' in data.columns:
-            # Get the tract count column (last numeric column)
-            tract_col = [col for col in data.columns if col != 'State' and col != 'STATE'][0]
-            data_to_merge = data[['State', tract_col]].copy()
-            summary = pd.merge(summary, data_to_merge, on='State', how='outer', suffixes=('', f'_{name.replace(" ", "_")}'))
-        elif 'STATE' in data.columns:
-            data_temp = data.copy()
-            data_temp['State'] = data_temp['STATE'].astype(str).str.zfill(2)
-            tract_col = [col for col in data_temp.columns if col != 'State' and col != 'STATE'][0]
-            data_to_merge = data_temp[['State', tract_col]].copy()
-            summary = pd.merge(summary, data_to_merge, on='State', how='outer', suffixes=('', f'_{name.replace(" ", "_")}'))
-    
-    # Fill NaN with 0
-    summary = summary.fillna(0)
-    
-    # Calculate total coverage
-    summary['Total_Tracts'] = summary.select_dtypes(include=[np.number]).sum(axis=1)
-    
-    # Save coverage summary
-    coverage_file = PROCESSED_DATA_DIR / "data_coverage_summary.csv"
-    summary.to_csv(coverage_file, index=False)
-    print(f"  ✓ Coverage summary saved to: {coverage_file}")
-    
-    # Create visualization
+    # Create geographic map
     try:
-        # State FIPS to state name mapping (abbreviated)
-        state_fips_to_name = {
-            '01': 'AL', '02': 'AK', '04': 'AZ', '05': 'AR', '06': 'CA', '08': 'CO', '09': 'CT', '10': 'DE',
-            '11': 'DC', '12': 'FL', '13': 'GA', '15': 'HI', '16': 'ID', '17': 'IL', '18': 'IN', '19': 'IA',
-            '20': 'KS', '21': 'KY', '22': 'LA', '23': 'ME', '24': 'MD', '25': 'MA', '26': 'MI', '27': 'MN',
-            '28': 'MS', '29': 'MO', '30': 'MT', '31': 'NE', '32': 'NV', '33': 'NH', '34': 'NJ', '35': 'NM',
-            '36': 'NY', '37': 'NC', '38': 'ND', '39': 'OH', '40': 'OK', '41': 'OR', '42': 'PA', '44': 'RI',
-            '45': 'SC', '46': 'SD', '47': 'TN', '48': 'TX', '49': 'UT', '50': 'VT', '51': 'VA', '53': 'WA',
-            '54': 'WV', '55': 'WI', '56': 'WY'
-        }
-        
-        # Add state abbreviations
-        summary['State_Abbr'] = summary['State'].map(state_fips_to_name).fillna(summary['State'])
-        
-        # Create bar chart showing coverage by state
-        fig, ax = plt.subplots(figsize=(16, 10))
-        
-        # Sort by total tracts
-        summary_sorted = summary.sort_values('Total_Tracts', ascending=False)
-        
-        # Create grouped bar chart
-        x = np.arange(len(summary_sorted))
-        width = 0.25
-        
-        bars1 = ax.bar(x - width, summary_sorted.get('FoodAccess_Tracts', 0), width, label='Food Access Atlas', color='#2ecc71')
-        if 'CensusACS_Tracts' in summary_sorted.columns:
-            bars2 = ax.bar(x, summary_sorted['CensusACS_Tracts'], width, label='Census ACS', color='#3498db')
-        if 'CDCPLACES_Tracts' in summary_sorted.columns:
-            bars3 = ax.bar(x + width, summary_sorted['CDCPLACES_Tracts'], width, label='CDC PLACES', color='#e74c3c')
-        
-        ax.set_xlabel('State', fontsize=12, fontweight='bold')
-        ax.set_ylabel('Number of Census Tracts', fontsize=12, fontweight='bold')
-        ax.set_title('Data Coverage by State - US Census Tracts', fontsize=14, fontweight='bold')
-        ax.set_xticks(x)
-        ax.set_xticklabels(summary_sorted['State_Abbr'], rotation=45, ha='right')
-        ax.legend()
-        ax.grid(axis='y', alpha=0.3)
-        
-        plt.tight_layout()
-        
-        # Save figure
-        map_file = PROCESSED_DATA_DIR / "data_coverage_map.png"
-        plt.savefig(map_file, dpi=150, bbox_inches='tight')
-        plt.close()
-        
-        print(f"  ✓ Coverage map saved to: {map_file}")
+        if GEOPANDAS_AVAILABLE and tract_coords is not None:
+            print("  Creating tract-level geographic map...")
+            
+            # Filter to tracts with data
+            tracts_df = pd.DataFrame({'tract_id': list(tracts_with_data)})
+            tracts_df['tract_id'] = tracts_df['tract_id'].astype(str).str.zfill(11)
+            
+            # Merge with coordinates
+            tracts_with_coords = pd.merge(
+                tracts_df,
+                tract_coords[['tract_id', 'lat', 'lon']],
+                on='tract_id',
+                how='inner'
+            )
+            
+            # Extract state FIPS (first 2 digits of tract_id)
+            tracts_with_coords['state_fips'] = tracts_with_coords['tract_id'].str[:2]
+            
+            # Exclude Alaska (02) and Hawaii (15)
+            tracts_with_coords = tracts_with_coords[
+                ~tracts_with_coords['state_fips'].isin(['02', '15'])
+            ]
+            
+            print(f"  Plotting {len(tracts_with_coords)} tracts on map...")
+            
+            # Try to get US state boundaries (optional - map will work without it)
+            us_states = None
+            try:
+                # Try to use naturalearth for country outline (not individual states)
+                world = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
+                us_outline = world[world['NAME'] == 'United States of America']
+                if len(us_outline) > 0:
+                    # Use country outline as background
+                    us_states = us_outline
+            except:
+                # Fallback: create map from tract coordinates only
+                print("  Using tract coordinates for map visualization (no state boundaries)...")
+                us_states = None
+            
+            # Create figure
+            fig, ax = plt.subplots(figsize=(16, 10))
+            
+            # Plot US states outline if available
+            if us_states is not None:
+                us_states.plot(ax=ax, color='lightgray', edgecolor='white', linewidth=0.5)
+            
+            # Plot tracts with data as points
+            # Create GeoDataFrame from tract coordinates
+            geometry = [Point(lon, lat) for lon, lat in zip(tracts_with_coords['lon'], tracts_with_coords['lat'])]
+            tracts_gdf = gpd.GeoDataFrame(tracts_with_coords, geometry=geometry, crs='EPSG:4326')
+            
+            # Plot tracts
+            tracts_gdf.plot(ax=ax, markersize=0.1, color='#2ecc71', alpha=0.6, label='Tracts with Data')
+            
+            # Set map bounds (contiguous US)
+            ax.set_xlim(-125, -66)
+            ax.set_ylim(24, 50)
+            
+            ax.set_xlabel('Longitude', fontsize=12, fontweight='bold')
+            ax.set_ylabel('Latitude', fontsize=12, fontweight='bold')
+            ax.set_title('US Census Tract Data Coverage Map\n(Tracts with Data)', fontsize=14, fontweight='bold')
+            ax.legend()
+            ax.grid(True, alpha=0.3)
+            
+            plt.tight_layout()
+            
+            # Save figure
+            map_file = PROCESSED_DATA_DIR / "data_coverage_map.png"
+            plt.savefig(map_file, dpi=150, bbox_inches='tight')
+            plt.close()
+            
+            print(f"  ✓ Geographic coverage map saved to: {map_file}")
+            
+        else:
+            # Fallback: Create state-level choropleth map
+            print("  Creating state-level choropleth map...")
+            
+            if summary is None:
+                print("  ⚠ No state-level summary available")
+                return
+            
+            # Download US states shapefile
+            try:
+                # Use naturalearth for state boundaries
+                world = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
+                # Filter to US
+                us = world[world['NAME'] == 'United States of America']
+                
+                # Alternative: use state boundaries from naturalearth
+                # For better state-level detail, we'd need to download Census state boundaries
+                # For now, create a simplified visualization
+                
+                # State FIPS to state name mapping
+                state_fips_to_name = {
+                    '01': 'Alabama', '04': 'Arizona', '05': 'Arkansas', '06': 'California',
+                    '08': 'Colorado', '09': 'Connecticut', '10': 'Delaware', '11': 'District of Columbia',
+                    '12': 'Florida', '13': 'Georgia', '16': 'Idaho', '17': 'Illinois',
+                    '18': 'Indiana', '19': 'Iowa', '20': 'Kansas', '21': 'Kentucky',
+                    '22': 'Louisiana', '23': 'Maine', '24': 'Maryland', '25': 'Massachusetts',
+                    '26': 'Michigan', '27': 'Minnesota', '28': 'Mississippi', '29': 'Missouri',
+                    '30': 'Montana', '31': 'Nebraska', '32': 'Nevada', '33': 'New Hampshire',
+                    '34': 'New Jersey', '35': 'New Mexico', '36': 'New York', '37': 'North Carolina',
+                    '38': 'North Dakota', '39': 'Ohio', '40': 'Oklahoma', '41': 'Oregon',
+                    '42': 'Pennsylvania', '44': 'Rhode Island', '45': 'South Carolina',
+                    '46': 'South Dakota', '47': 'Tennessee', '48': 'Texas', '49': 'Utah',
+                    '50': 'Vermont', '51': 'Virginia', '53': 'Washington', '54': 'West Virginia',
+                    '55': 'Wisconsin', '56': 'Wyoming'
+                }
+                
+                summary['State_Name'] = summary['State'].map(state_fips_to_name)
+                
+                # Create a simple bar chart as fallback
+                fig, ax = plt.subplots(figsize=(16, 10))
+                
+                summary_sorted = summary.sort_values('Total_Tracts', ascending=False)
+                summary_sorted = summary_sorted[summary_sorted['State'] != '02']  # Exclude Alaska
+                summary_sorted = summary_sorted[summary_sorted['State'] != '15']  # Exclude Hawaii
+                
+                x = np.arange(len(summary_sorted))
+                width = 0.25
+                
+                bars1 = ax.bar(x - width, summary_sorted.get('FoodAccess_Tracts', 0), width, 
+                              label='Food Access Atlas', color='#2ecc71')
+                if 'CensusACS_Tracts' in summary_sorted.columns:
+                    bars2 = ax.bar(x, summary_sorted['CensusACS_Tracts'], width, 
+                                  label='Census ACS', color='#3498db')
+                if 'CDCPLACES_Tracts' in summary_sorted.columns:
+                    bars3 = ax.bar(x + width, summary_sorted['CDCPLACES_Tracts'], width, 
+                                  label='CDC PLACES', color='#e74c3c')
+                
+                state_abbr_map = {
+                    '01': 'AL', '04': 'AZ', '05': 'AR', '06': 'CA', '08': 'CO', '09': 'CT', '10': 'DE',
+                    '11': 'DC', '12': 'FL', '13': 'GA', '16': 'ID', '17': 'IL', '18': 'IN', '19': 'IA',
+                    '20': 'KS', '21': 'KY', '22': 'LA', '23': 'ME', '24': 'MD', '25': 'MA', '26': 'MI', '27': 'MN',
+                    '28': 'MS', '29': 'MO', '30': 'MT', '31': 'NE', '32': 'NV', '33': 'NH', '34': 'NJ', '35': 'NM',
+                    '36': 'NY', '37': 'NC', '38': 'ND', '39': 'OH', '40': 'OK', '41': 'OR', '42': 'PA', '44': 'RI',
+                    '45': 'SC', '46': 'SD', '47': 'TN', '48': 'TX', '49': 'UT', '50': 'VT', '51': 'VA', '53': 'WA',
+                    '54': 'WV', '55': 'WI', '56': 'WY'
+                }
+                summary_sorted['State_Abbr'] = summary_sorted['State'].map(state_abbr_map)
+                
+                ax.set_xlabel('State', fontsize=12, fontweight='bold')
+                ax.set_ylabel('Number of Census Tracts', fontsize=12, fontweight='bold')
+                ax.set_title('Data Coverage by State - US Census Tracts (Excluding Alaska & Hawaii)', 
+                            fontsize=14, fontweight='bold')
+                ax.set_xticks(x)
+                ax.set_xticklabels(summary_sorted['State_Abbr'], rotation=45, ha='right')
+                ax.legend()
+                ax.grid(axis='y', alpha=0.3)
+                
+                plt.tight_layout()
+                
+                map_file = PROCESSED_DATA_DIR / "data_coverage_map.png"
+                plt.savefig(map_file, dpi=150, bbox_inches='tight')
+                plt.close()
+                
+                print(f"  ✓ Coverage map saved to: {map_file}")
+                
+            except Exception as e:
+                print(f"  ⚠ Error creating geographic map: {e}")
+                print(f"    Falling back to CSV summary only")
         
         # Print summary statistics
-        print("\n  Coverage Summary:")
-        print(f"    Total states with Food Access data: {(summary['FoodAccess_Tracts'] > 0).sum()}")
-        if 'CensusACS_Tracts' in summary.columns:
-            print(f"    Total states with Census ACS data: {(summary['CensusACS_Tracts'] > 0).sum()}")
-        if 'CDCPLACES_Tracts' in summary.columns:
-            print(f"    Total states with CDC PLACES data: {(summary['CDCPLACES_Tracts'] > 0).sum()}")
-        print(f"    Total tracts (Food Access): {summary['FoodAccess_Tracts'].sum():,.0f}")
-        if 'CensusACS_Tracts' in summary.columns:
-            print(f"    Total tracts (Census ACS): {summary['CensusACS_Tracts'].sum():,.0f}")
+        if summary is not None:
+            print("\n  Coverage Summary:")
+            summary_no_ak_hi = summary[~summary['State'].isin(['02', '15'])]
+            print(f"    Total states with Food Access data: {(summary_no_ak_hi['FoodAccess_Tracts'] > 0).sum()}")
+            if 'CensusACS_Tracts' in summary.columns:
+                print(f"    Total states with Census ACS data: {(summary_no_ak_hi['CensusACS_Tracts'] > 0).sum()}")
+            if 'CDCPLACES_Tracts' in summary.columns:
+                print(f"    Total states with CDC PLACES data: {(summary_no_ak_hi['CDCPLACES_Tracts'] > 0).sum()}")
+            print(f"    Total tracts with data: {len(tracts_with_data):,}")
+            print(f"    Total tracts (Food Access): {summary_no_ak_hi['FoodAccess_Tracts'].sum():,.0f}")
+            if 'CensusACS_Tracts' in summary.columns:
+                print(f"    Total tracts (Census ACS): {summary_no_ak_hi['CensusACS_Tracts'].sum():,.0f}")
         
     except Exception as e:
         print(f"  ⚠ Error creating visualization: {e}")
-        print(f"    Coverage data saved to CSV: {coverage_file}")
+        import traceback
+        traceback.print_exc()
+        if summary is not None:
+            coverage_file = PROCESSED_DATA_DIR / "data_coverage_summary.csv"
+            print(f"    Coverage data saved to CSV: {coverage_file}")
 
 if __name__ == "__main__":
     main()

@@ -222,7 +222,7 @@ Organized data structure (5 main categories):
    - GTFS/ directory with transit feed ZIP files
 
 Additional directories:
-- data/processed/: Cleaned and merged datasets
+- data/processed/: Cleaned and merged datasets, including geographic coverage map (data_coverage_map.png)
 - data/features/: Engineered features for modeling
 - data/predictions/: Model predictions and outputs
 

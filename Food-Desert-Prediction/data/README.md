@@ -135,8 +135,13 @@ This directory contains all data sources organized into 5 main categories for th
 - `food_access_2015.csv` - Processed Food Access Atlas 2015 data (if available)
 - `change_features_2015_2019.csv` - Calculated change metrics between years
 - `target_variable.csv` - Target variable for model training
-- `data_coverage_summary.csv` - Summary of data coverage by state
-- `data_coverage_map.png` - Visualization of data coverage
+- `data_coverage_summary.csv` - Summary of data coverage by state (tract counts per state)
+- `data_coverage_map.png` - **Geographic map visualization** showing census tract data coverage:
+  - Map of the contiguous United States (excluding Alaska and Hawaii)
+  - Census tracts with data are plotted as green points
+  - Shows geographic distribution of data availability
+  - Generated automatically during data processing
+  - Uses tract coordinates from `01_census_demographics/tract_coordinates.csv`
 
 ### `features/`
 **Purpose**: Engineered features for machine learning models

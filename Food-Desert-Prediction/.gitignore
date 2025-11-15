@@ -9,31 +9,59 @@ env/
 ENV/
 .venv
 
-# Data files
-data/raw/*.xlsx
-data/raw/*.csv
-data/raw/gtfs/
-data/processed/*.csv
-data/features/*.csv
-data/predictions/*.csv
+# Data files - exclude large datasets (users will download via scripts)
+# Keep data directory structure but exclude actual data files
+data/01_census_demographics/*.csv
+data/01_census_demographics/*.xlsx
+data/01_census_demographics/tiger_cache/
+data/01_census_demographics/metadata/
 
-# Models
+data/02_food_access/*.xlsx
+data/02_food_access/USDA\ Food\ Environment\ Atlas/
+
+data/03_health_outcomes/*.csv
+
+data/04_housing_economics/Zillow/
+
+data/05_infrastructure_transportation/*.csv
+data/05_infrastructure_transportation/gtfs/
+
+# Processed data and features (generated files)
+data/processed/*.csv
+data/processed/*.png
+data/features/*.csv
+
+# Predictions (generated outputs - users will generate their own)
+data/predictions/*.csv
+data/predictions/*.txt
+data/predictions/*.md
+
+# Models (trained models - users will train their own)
 models/*.pkl
 models/*.csv
 
-# Environment
+# Environment variables (contains API keys)
 .env
 .env.local
+.env.*.local
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+*.sublime-project
+*.sublime-workspace
 
 # OS
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+Desktop.ini
 
 # Jupyter
 .ipynb_checkpoints/
@@ -41,4 +69,28 @@ Thumbs.db
 
 # Logs
 *.log
+logs/
 
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# Large files that shouldn't be in repo
+*.zip
+*.tar.gz
+*.pdf
+!docs/**/*.pdf
+
+# Keep empty directories for structure
+!data/01_census_demographics/.gitkeep
+!data/02_food_access/.gitkeep
+!data/03_health_outcomes/.gitkeep
+!data/04_housing_economics/.gitkeep
+!data/05_infrastructure_transportation/.gitkeep
+!data/processed/.gitkeep
+!data/features/.gitkeep
+!data/predictions/.gitkeep
+!data/raw/.gitkeep
+!models/.gitkeep

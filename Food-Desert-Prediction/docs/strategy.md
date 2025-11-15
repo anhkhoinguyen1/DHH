@@ -325,6 +325,117 @@ Top 10 most important features:
 
 ---
 
+## Social Vulnerability Index (SVI) Calculation
+
+### Overview
+The Social Vulnerability Index (SVI) is a composite measure of social vulnerability calculated for each census tract. It is based on the CDC/ATSDR Social Vulnerability Index methodology, adapted to use available data sources in this project.
+
+### Purpose
+SVI helps identify tracts where social vulnerability compounds food access challenges. Tracts with high SVI scores are more vulnerable to becoming food deserts because they lack resources to adapt to food access disruptions.
+
+### Calculation Methodology
+
+The SVI score is calculated as a weighted average of four component themes:
+
+#### 1. Socioeconomic Status (30% weight)
+**Components:**
+- **Poverty Rate** (40% of theme): Percentage of population below poverty level
+  - Score: `PovertyRate / 100` (capped at 1.0)
+- **Income Level** (30% of theme): Median household income
+  - Score: Income-based thresholds
+    - < $30,000: 1.0 (very high vulnerability)
+    - $30,000-$50,000: 0.7 (high vulnerability)
+    - $50,000-$75,000: 0.4 (moderate vulnerability)
+    - > $75,000: 0.1 (low vulnerability)
+- **Education Attainment** (20% of theme): Percentage with bachelor's degree or higher
+  - Score: `1 - (EducationRate / 100)` (lower education = higher vulnerability)
+- **Rent Burden** (10% of theme): Percentage of income spent on rent
+  - Score: 
+    - > 50%: 1.0 (severely burdened)
+    - 30-50%: 0.7 (burdened)
+    - < 30%: 0.3 (not burdened)
+
+**Theme Score**: Weighted average of available components
+
+#### 2. Household Composition (25% weight)
+**Components:**
+- **Low-Income Households** (50% of theme): Official low-income tract designation
+  - Score: Binary (1 = low-income, 0 = not)
+- **Vehicle Ownership** (50% of theme): Percentage of households without vehicle
+  - Score: `1 - VehicleOwnershipRate` (lower ownership = higher vulnerability)
+
+**Theme Score**: Weighted average of available components
+
+#### 3. Minority Status & Language (25% weight)
+**Note**: Limited race/ethnicity data available. Uses proxies based on socioeconomic indicators.
+
+**Components:**
+- **Low-Income Proxy** (60% of theme): Low-income tracts as proxy for minority communities
+  - Score: Binary (1 = low-income, 0 = not)
+- **Poverty Indicator** (40% of theme): Poverty rate as additional vulnerability indicator
+  - Score: `PovertyRate / 100` (capped at 1.0)
+
+**Theme Score**: Weighted average (capped at 1.0)
+
+**Limitation**: This is a simplified proxy. Ideally would use Census race/ethnicity and language data for more accurate calculation.
+
+#### 4. Housing & Transportation (20% weight)
+**Components:**
+- **Vehicle Access** (50% of theme): Percentage of households without vehicle
+  - Score: `1 - VehicleOwnershipRate` or `HouseholdsNoVehicle / TotalHouseholds`
+- **Housing Crowding** (30% of theme): Average household size as proxy
+  - Score: 
+    - > 3.0 persons: `(AvgSize - 2.5) / 2.0` (normalized)
+    - ≤ 3.0 persons: 0.2 (low crowding)
+- **Rent Burden** (20% of theme): Percentage of income spent on rent
+  - Score: Same as Socioeconomic Status component
+
+**Theme Score**: Weighted average of available components
+
+### Final SVI Score Calculation
+
+```
+SVI = (Socioeconomic_Score × 0.30) + 
+      (Household_Score × 0.25) + 
+      (Minority_Score × 0.25) + 
+      (Housing_Score × 0.20)
+```
+
+**Normalization**: 
+- Each component theme is normalized to [0, 1]
+- Weights are normalized to sum to 1.0 if some components are missing
+- Final SVI score is clipped to [0, 1]
+
+**Interpretation**:
+- **0.0 - 0.3**: Low vulnerability
+- **0.3 - 0.5**: Moderate vulnerability
+- **0.5 - 0.7**: High vulnerability
+- **0.7 - 1.0**: Very high vulnerability
+
+### Data Sources Used
+
+- **Census ACS**: Poverty rate, median income, education, rent burden, vehicle ownership, household size
+- **USDA Food Access Atlas**: Low-income tract designations
+- **Zillow Housing Data**: Rent affordability metrics (if available)
+
+### Limitations
+
+1. **Race/Ethnicity Data**: Limited race/ethnicity data available, so Minority Status component uses socioeconomic proxies
+2. **Age Data**: No direct age data available, so elderly vulnerability is proxied through other indicators
+3. **Disability Data**: No disability data available in current features
+4. **Language Barriers**: No language data available
+5. **Group Quarters**: No group quarters data available
+
+### Future Improvements
+
+1. Integrate Census ACS race/ethnicity variables (B03002 series)
+2. Add age demographics (B01001 series) for elderly vulnerability
+3. Add disability data (B18101 series)
+4. Add language data (B16001 series)
+5. Add group quarters data (B26001 series)
+
+---
+
 ## Next Steps
 
 ### Completed ✅
