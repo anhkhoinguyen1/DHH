@@ -116,7 +116,7 @@ output.to_csv('data/01_census_demographics/tract_coordinates.csv', index=False)
 
 ## Usage
 
-Once the file is in place, the `generate_top100.py` script will automatically:
+Once the file is in place, the `generate_top1000.py` script will automatically:
 
 1. Check for `tract_coordinates.csv` first
 2. Use those coordinates if available

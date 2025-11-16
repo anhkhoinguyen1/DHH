@@ -32,6 +32,10 @@ normalized_lapop = lapop1 / Pop2010
 normalized_lalowi = lalowi1 / TractLOWI
 ```
 
+**Mathematical Formulation**:
+- Min-Max Normalization: `x_norm = (x - x_min) / (x_max - x_min)`
+- Z-Score Normalization: `z = (x - μ) / σ`
+
 ---
 
 #### B. Socioeconomic Indicators (Weight: 30%)
@@ -56,6 +60,12 @@ poverty_score = PovertyRate / 100
 education_score = (BachelorDegreeCount / TotalPopulation)
 rent_burden = MedianGrossRent / MedianFamilyIncome
 ```
+
+**Mathematical Formulation**:
+- Income Score: `income_score = (MedianIncome - min_income) / (max_income - min_income)`
+- Poverty Score: `poverty_score = PovertyRate / 100`
+- Education Score: `education_score = BachelorDegreeCount / TotalPopulation`
+- Rent Burden: `rent_burden = MedianGrossRent / MedianFamilyIncome`
 
 **Direction**: 
 - Lower income → higher risk (inverse)
@@ -87,6 +97,10 @@ density_change = (stores_t - stores_t_minus_5) / stores_t_minus_5
 risk_score = -density_change  # Negative change = higher risk
 ```
 
+**Mathematical Formulation**:
+- Density Change: `Δ_density = (stores_t - stores_{t-5}) / stores_{t-5}`
+- Risk Score: `risk_score = -Δ_density`
+
 ---
 
 #### D. Transportation Access (Weight: 15%)
@@ -110,6 +124,10 @@ risk_score = -density_change  # Negative change = higher risk
 vehicle_ownership = 1 - (HouseholdsNoVehicle / TotalHouseholds)
 transit_access_score = (TransitToGroceryAccess ? 1 : 0) × TransitFrequency
 ```
+
+**Mathematical Formulation**:
+- Vehicle Ownership: `vehicle_ownership = 1 - (HouseholdsNoVehicle / TotalHouseholds)`
+- Transit Access: `transit_access = TransitFrequency` if accessible, else `0`
 
 ---
 
@@ -142,17 +160,25 @@ Each category score is calculated as a weighted sum of normalized features:
 Category_Score = Σ (feature_i × weight_i)
 ```
 
+**Mathematical Formulation**:
+- Category Score: `Category_Score = Σ_i (w_i × f_i)`
+  - Where `w_i` is the weight for feature `i` and `f_i` is the normalized feature value
+
 ### Step 3: Overall Risk Score
 ```
 Risk_Score = (A × 0.25) + (B × 0.30) + (C × 0.25) + (D × 0.15) + (E × 0.05)
 ```
 
+**Mathematical Formulation**:
+- Risk Score: `Risk_Score = w_A × A + w_B × B + w_C × C + w_D × D + w_E × E`
+- Expanded: `Risk_Score = 0.25 × A + 0.30 × B + 0.25 × C + 0.15 × D + 0.05 × E`
+
 Where:
-- A = Food Access Status Score
-- B = Socioeconomic Indicators Score
-- C = Retail Environment Changes Score
-- D = Transportation Access Score
-- E = Demographic and Health Indicators Score
+- A = Food Access Status Score (weight: 0.25)
+- B = Socioeconomic Indicators Score (weight: 0.30)
+- C = Retail Environment Changes Score (weight: 0.25)
+- D = Transportation Access Score (weight: 0.15)
+- E = Demographic and Health Indicators Score (weight: 0.05)
 
 ### Step 4: Probability Conversion
 The risk score is converted to probability using a logistic function:
@@ -160,6 +186,11 @@ The risk score is converted to probability using a logistic function:
 ```
 Probability = 1 / (1 + exp(-(Risk_Score - threshold)))
 ```
+
+**Mathematical Formulation**:
+- Logistic Function: `P = 1 / (1 + e^{-(Risk_Score - θ)})`
+  - Where `θ` is the decision threshold
+  - Output range: [0, 1]
 
 Or using a trained machine learning model (Random Forest, Gradient Boosting, or Neural Network) that learns the optimal combination of features.
 
@@ -400,6 +431,11 @@ SVI = (Socioeconomic_Score × 0.30) +
       (Minority_Score × 0.25) + 
       (Housing_Score × 0.20)
 ```
+
+**Mathematical Formulation**:
+- SVI Score: `SVI = 0.30 × S_socio + 0.25 × S_household + 0.25 × S_minority + 0.20 × S_housing`
+  - Where each component score `S_*` is normalized to [0, 1]
+  - Final SVI score is clipped to [0, 1]
 
 **Normalization**: 
 - Each component theme is normalized to [0, 1]

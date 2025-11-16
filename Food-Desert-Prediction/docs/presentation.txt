@@ -104,7 +104,7 @@ CLOSING
 ================================================================================
 KEY STATISTICS TO MENTION
 ================================================================================
-• 72,000+ census tracts analyzed
+•   
 • 2,519 tracts became food deserts (2015-2019)
 • 5 major data categories integrated
 • 50+ features engineered

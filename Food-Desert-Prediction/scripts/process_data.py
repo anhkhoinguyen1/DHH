@@ -747,7 +747,7 @@ def main():
     print("=" * 60)
 
 def generate_coverage_map(df_food_access, df_census=None, df_cdc=None):
-    """Generate a geographic map showing census tract data coverage across the US (excluding Alaska and Hawaii)."""
+    """Generate a geographic map showing census tract data coverage across all US states (including Alaska and Hawaii)."""
     print("Creating geographic data coverage map...")
     
     # Collect all tracts with data
@@ -865,51 +865,175 @@ def generate_coverage_map(df_food_access, df_census=None, df_cdc=None):
             # Extract state FIPS (first 2 digits of tract_id)
             tracts_with_coords['state_fips'] = tracts_with_coords['tract_id'].str[:2]
             
-            # Exclude Alaska (02) and Hawaii (15)
-            tracts_with_coords = tracts_with_coords[
-                ~tracts_with_coords['state_fips'].isin(['02', '15'])
-            ]
+            # Include all states (Alaska and Hawaii included)
+            print(f"  Plotting {len(tracts_with_coords)} tracts on map (including all states)...")
             
-            print(f"  Plotting {len(tracts_with_coords)} tracts on map...")
+            # Try to get US borders using multiple methods
+            us_border = None
+            border_method = None
             
-            # Try to get US state boundaries (optional - map will work without it)
-            us_states = None
+            # Method 1: Try cartopy (if available)
             try:
-                # Try to use naturalearth for country outline (not individual states)
-                world = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
-                us_outline = world[world['NAME'] == 'United States of America']
-                if len(us_outline) > 0:
-                    # Use country outline as background
-                    us_states = us_outline
-            except:
-                # Fallback: create map from tract coordinates only
-                print("  Using tract coordinates for map visualization (no state boundaries)...")
-                us_states = None
+                import cartopy.crs as ccrs
+                import cartopy.feature as cfeature
+                border_method = 'cartopy'
+                print("  ✓ Will use cartopy for US borders")
+            except ImportError:
+                pass
             
-            # Create figure
-            fig, ax = plt.subplots(figsize=(16, 10))
+            # Method 2: Create border from tract coordinate bounds
+            # This creates a visual border using the extent of tract data
+            border_method = 'bounds'
+            print("  Creating US border from tract coordinate bounds...")
             
-            # Plot US states outline if available
-            if us_states is not None:
-                us_states.plot(ax=ax, color='lightgray', edgecolor='white', linewidth=0.5)
+            # Create figure with main map and insets for Alaska and Hawaii
+            fig = plt.figure(figsize=(18, 12))
             
-            # Plot tracts with data as points
-            # Create GeoDataFrame from tract coordinates
-            geometry = [Point(lon, lat) for lon, lat in zip(tracts_with_coords['lon'], tracts_with_coords['lat'])]
-            tracts_gdf = gpd.GeoDataFrame(tracts_with_coords, geometry=geometry, crs='EPSG:4326')
+            # Main map for contiguous US
+            ax_main = fig.add_subplot(1, 1, 1)
             
-            # Plot tracts
-            tracts_gdf.plot(ax=ax, markersize=0.1, color='#2ecc71', alpha=0.6, label='Tracts with Data')
+            # Plot US border/outline if available
+            if us_border is not None and border_method in ['naturalearth_download', 'cartopy']:
+                # Plot country border with visible, dark edge
+                us_border.plot(ax=ax_main, color='#f5f5f5', edgecolor='#2c3e50', linewidth=2.0, alpha=0.4, zorder=1)
+            elif border_method == 'cartopy':
+                # Use cartopy features for borders
+                try:
+                    import cartopy.crs as ccrs
+                    import cartopy.feature as cfeature
+                    ax_main.add_feature(cfeature.COASTLINE, linewidth=1.5, edgecolor='#2c3e50', zorder=1)
+                    ax_main.add_feature(cfeature.BORDERS, linewidth=1.0, edgecolor='#2c3e50', zorder=1)
+                    ax_main.add_feature(cfeature.STATES, linewidth=0.8, edgecolor='#666666', zorder=1)
+                except:
+                    pass
+            elif border_method == 'bounds':
+                # Draw US border using tract coordinate bounds
+                # Create approximate US border using known geographic boundaries
+                from matplotlib.patches import Rectangle
+                
+                # Approximate US borders (contiguous US)
+                # These are rough boundaries - not perfect but provide visual reference
+                us_border_coords = {
+                    'west': -125, 'east': -66, 'south': 24, 'north': 50
+                }
+                
+                # Draw border rectangle with rounded corners effect
+                border_rect = Rectangle(
+                    (us_border_coords['west'], us_border_coords['south']),
+                    us_border_coords['east'] - us_border_coords['west'],
+                    us_border_coords['north'] - us_border_coords['south'],
+                    linewidth=2.5,
+                    edgecolor='#2c3e50',
+                    facecolor='none',
+                    zorder=1,
+                    alpha=0.8
+                )
+                ax_main.add_patch(border_rect)
+                
+                # Add additional border lines for visual emphasis
+                # Top border
+                ax_main.axhline(y=us_border_coords['north'], xmin=0, xmax=1, 
+                               color='#2c3e50', linewidth=2.5, zorder=1, alpha=0.8)
+                # Bottom border
+                ax_main.axhline(y=us_border_coords['south'], xmin=0, xmax=1, 
+                               color='#2c3e50', linewidth=2.5, zorder=1, alpha=0.8)
+                # Left border
+                ax_main.axvline(x=us_border_coords['west'], ymin=0, ymax=1, 
+                               color='#2c3e50', linewidth=2.5, zorder=1, alpha=0.8)
+                # Right border
+                ax_main.axvline(x=us_border_coords['east'], ymin=0, ymax=1, 
+                               color='#2c3e50', linewidth=2.5, zorder=1, alpha=0.8)
             
-            # Set map bounds (contiguous US)
-            ax.set_xlim(-125, -66)
-            ax.set_ylim(24, 50)
+            # Separate tracts by state
+            tracts_contiguous = tracts_with_coords[~tracts_with_coords['state_fips'].isin(['02', '15'])]
+            tracts_ak = tracts_with_coords[tracts_with_coords['state_fips'] == '02']
+            tracts_hi = tracts_with_coords[tracts_with_coords['state_fips'] == '15']
             
-            ax.set_xlabel('Longitude', fontsize=12, fontweight='bold')
-            ax.set_ylabel('Latitude', fontsize=12, fontweight='bold')
-            ax.set_title('US Census Tract Data Coverage Map\n(Tracts with Data)', fontsize=14, fontweight='bold')
-            ax.legend()
-            ax.grid(True, alpha=0.3)
+            # Plot contiguous US tracts
+            if len(tracts_contiguous) > 0:
+                geometry_cont = [Point(lon, lat) for lon, lat in zip(tracts_contiguous['lon'], tracts_contiguous['lat'])]
+                tracts_gdf_cont = gpd.GeoDataFrame(tracts_contiguous, geometry=geometry_cont, crs='EPSG:4326')
+                tracts_gdf_cont.plot(ax=ax_main, markersize=0.1, color='#2ecc71', alpha=0.6, label='Tracts with Data')
+            
+            # Set main map bounds (contiguous US)
+            ax_main.set_xlim(-125, -66)
+            ax_main.set_ylim(24, 50)
+            
+            ax_main.set_xlabel('Longitude', fontsize=12, fontweight='bold')
+            ax_main.set_ylabel('Latitude', fontsize=12, fontweight='bold')
+            ax_main.set_title('US Census Tract Data Coverage Map\n(All States - Including Alaska & Hawaii)', fontsize=14, fontweight='bold')
+            ax_main.legend()
+            ax_main.grid(True, alpha=0.3)
+            
+            # Add Alaska inset if data exists
+            if len(tracts_ak) > 0:
+                ax_ak = fig.add_axes([0.02, 0.35, 0.25, 0.25])  # [left, bottom, width, height]
+                # Plot US border for Alaska inset
+                if us_border is not None and border_method in ['naturalearth_download', 'cartopy']:
+                    us_border.plot(ax=ax_ak, color='#f5f5f5', edgecolor='#2c3e50', linewidth=1.5, alpha=0.4, zorder=1)
+                elif border_method == 'cartopy':
+                    try:
+                        import cartopy.crs as ccrs
+                        import cartopy.feature as cfeature
+                        ax_ak.add_feature(cfeature.COASTLINE, linewidth=1.0, edgecolor='#2c3e50', zorder=1)
+                        ax_ak.add_feature(cfeature.BORDERS, linewidth=0.8, edgecolor='#2c3e50', zorder=1)
+                    except:
+                        pass
+                elif border_method == 'bounds':
+                    # Draw Alaska border
+                    from matplotlib.patches import Rectangle
+                    ak_border = Rectangle(
+                        (-180, 50), 50, 22,
+                        linewidth=1.5, edgecolor='#2c3e50', facecolor='none', zorder=1, alpha=0.8
+                    )
+                    ax_ak.add_patch(ak_border)
+                geometry_ak = [Point(lon, lat) for lon, lat in zip(tracts_ak['lon'], tracts_ak['lat'])]
+                tracts_gdf_ak = gpd.GeoDataFrame(tracts_ak, geometry=geometry_ak, crs='EPSG:4326')
+                tracts_gdf_ak.plot(ax=ax_ak, markersize=1, color='#2ecc71', alpha=0.8)
+                ax_ak.set_xlim(-180, -130)
+                ax_ak.set_ylim(50, 72)
+                ax_ak.set_title('Alaska', fontsize=10, fontweight='bold')
+                ax_ak.set_xticks([])
+                ax_ak.set_yticks([])
+                ax_ak.spines['top'].set_visible(True)
+                ax_ak.spines['right'].set_visible(True)
+                ax_ak.spines['bottom'].set_visible(True)
+                ax_ak.spines['left'].set_visible(True)
+            
+            # Add Hawaii inset if data exists
+            if len(tracts_hi) > 0:
+                ax_hi = fig.add_axes([0.25, 0.02, 0.15, 0.15])  # [left, bottom, width, height]
+                # Plot US border for Hawaii inset
+                if us_border is not None and border_method in ['naturalearth_download', 'cartopy']:
+                    us_border.plot(ax=ax_hi, color='#f5f5f5', edgecolor='#2c3e50', linewidth=1.5, alpha=0.4, zorder=1)
+                elif border_method == 'cartopy':
+                    try:
+                        import cartopy.crs as ccrs
+                        import cartopy.feature as cfeature
+                        ax_hi.add_feature(cfeature.COASTLINE, linewidth=1.0, edgecolor='#2c3e50', zorder=1)
+                        ax_hi.add_feature(cfeature.BORDERS, linewidth=0.8, edgecolor='#2c3e50', zorder=1)
+                    except:
+                        pass
+                elif border_method == 'bounds':
+                    # Draw Hawaii border
+                    from matplotlib.patches import Rectangle
+                    hi_border = Rectangle(
+                        (-161, 18), 7, 5,
+                        linewidth=1.5, edgecolor='#2c3e50', facecolor='none', zorder=1, alpha=0.8
+                    )
+                    ax_hi.add_patch(hi_border)
+                geometry_hi = [Point(lon, lat) for lon, lat in zip(tracts_hi['lon'], tracts_hi['lat'])]
+                tracts_gdf_hi = gpd.GeoDataFrame(tracts_hi, geometry=geometry_hi, crs='EPSG:4326')
+                tracts_gdf_hi.plot(ax=ax_hi, markersize=2, color='#2ecc71', alpha=0.8)
+                ax_hi.set_xlim(-161, -154)
+                ax_hi.set_ylim(18, 23)
+                ax_hi.set_title('Hawaii', fontsize=10, fontweight='bold')
+                ax_hi.set_xticks([])
+                ax_hi.set_yticks([])
+                ax_hi.spines['top'].set_visible(True)
+                ax_hi.spines['right'].set_visible(True)
+                ax_hi.spines['bottom'].set_visible(True)
+                ax_hi.spines['left'].set_visible(True)
             
             plt.tight_layout()
             
@@ -939,11 +1063,11 @@ def generate_coverage_map(df_food_access, df_census=None, df_cdc=None):
                 # For better state-level detail, we'd need to download Census state boundaries
                 # For now, create a simplified visualization
                 
-                # State FIPS to state name mapping
+                # State FIPS to state name mapping (including Alaska and Hawaii)
                 state_fips_to_name = {
-                    '01': 'Alabama', '04': 'Arizona', '05': 'Arkansas', '06': 'California',
+                    '01': 'Alabama', '02': 'Alaska', '04': 'Arizona', '05': 'Arkansas', '06': 'California',
                     '08': 'Colorado', '09': 'Connecticut', '10': 'Delaware', '11': 'District of Columbia',
-                    '12': 'Florida', '13': 'Georgia', '16': 'Idaho', '17': 'Illinois',
+                    '12': 'Florida', '13': 'Georgia', '15': 'Hawaii', '16': 'Idaho', '17': 'Illinois',
                     '18': 'Indiana', '19': 'Iowa', '20': 'Kansas', '21': 'Kentucky',
                     '22': 'Louisiana', '23': 'Maine', '24': 'Maryland', '25': 'Massachusetts',
                     '26': 'Michigan', '27': 'Minnesota', '28': 'Mississippi', '29': 'Missouri',
@@ -962,8 +1086,7 @@ def generate_coverage_map(df_food_access, df_census=None, df_cdc=None):
                 fig, ax = plt.subplots(figsize=(16, 10))
                 
                 summary_sorted = summary.sort_values('Total_Tracts', ascending=False)
-                summary_sorted = summary_sorted[summary_sorted['State'] != '02']  # Exclude Alaska
-                summary_sorted = summary_sorted[summary_sorted['State'] != '15']  # Exclude Hawaii
+                # Include all states (Alaska and Hawaii included)
                 
                 x = np.arange(len(summary_sorted))
                 width = 0.25
@@ -978,8 +1101,8 @@ def generate_coverage_map(df_food_access, df_census=None, df_cdc=None):
                                   label='CDC PLACES', color='#e74c3c')
                 
                 state_abbr_map = {
-                    '01': 'AL', '04': 'AZ', '05': 'AR', '06': 'CA', '08': 'CO', '09': 'CT', '10': 'DE',
-                    '11': 'DC', '12': 'FL', '13': 'GA', '16': 'ID', '17': 'IL', '18': 'IN', '19': 'IA',
+                    '01': 'AL', '02': 'AK', '04': 'AZ', '05': 'AR', '06': 'CA', '08': 'CO', '09': 'CT', '10': 'DE',
+                    '11': 'DC', '12': 'FL', '13': 'GA', '15': 'HI', '16': 'ID', '17': 'IL', '18': 'IN', '19': 'IA',
                     '20': 'KS', '21': 'KY', '22': 'LA', '23': 'ME', '24': 'MD', '25': 'MA', '26': 'MI', '27': 'MN',
                     '28': 'MS', '29': 'MO', '30': 'MT', '31': 'NE', '32': 'NV', '33': 'NH', '34': 'NJ', '35': 'NM',
                     '36': 'NY', '37': 'NC', '38': 'ND', '39': 'OH', '40': 'OK', '41': 'OR', '42': 'PA', '44': 'RI',
@@ -990,7 +1113,7 @@ def generate_coverage_map(df_food_access, df_census=None, df_cdc=None):
                 
                 ax.set_xlabel('State', fontsize=12, fontweight='bold')
                 ax.set_ylabel('Number of Census Tracts', fontsize=12, fontweight='bold')
-                ax.set_title('Data Coverage by State - US Census Tracts (Excluding Alaska & Hawaii)', 
+                ax.set_title('Data Coverage by State - US Census Tracts (All States)', 
                             fontsize=14, fontweight='bold')
                 ax.set_xticks(x)
                 ax.set_xticklabels(summary_sorted['State_Abbr'], rotation=45, ha='right')

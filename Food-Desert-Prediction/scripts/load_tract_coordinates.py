@@ -7,7 +7,7 @@ if you have them from another source or want to supplement missing coordinates.
 Usage:
 1. Create a CSV file with columns: tract_id, lat, lon
 2. Place it at: data/01_census_demographics/tract_coordinates.csv
-3. Run: python scripts/generate_top100.py
+3. Run: python scripts/generate_top1000.py
 
 The script will automatically use this file if it exists.
 """

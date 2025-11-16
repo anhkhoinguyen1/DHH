@@ -6,9 +6,9 @@ This script runs the complete pipeline:
 2. Data processing
 3. Model training (if model doesn't exist)
 4. Prediction generation
-5. Top 100 highest risk tracts CSV output
+5. Top 1000 highest risk tracts CSV output
 
-The final output is: data/predictions/top100_highest_risk_tracts.csv
+The final output is: data/predictions/top1000_highest_risk_tracts.csv
 """
 
 import sys
@@ -64,7 +64,7 @@ def main():
     print("Food Desert Prediction - Full Pipeline")
     print("=" * 60)
     print("\nThis will run the complete pipeline to generate:")
-    print("  → data/predictions/top100_highest_risk_tracts.csv")
+    print("  → data/predictions/top1000_highest_risk_tracts.csv")
     print("\nPipeline steps:")
     print("  1. Data collection (if needed)")
     print("  2. Data processing")
@@ -129,26 +129,26 @@ def main():
         print("  ❌ Predictions file not created. Cannot continue.")
         return False
     
-    # Step 5: Generate Top 100 CSV
-    print("\n[Step 5/5] Generating Top 100 highest risk tracts...")
-    if not run_script("generate_top100.py", "Top 100 Generation"):
-        print("  ❌ Top 100 generation failed.")
+    # Step 5: Generate Top 1000 CSV
+    print("\n[Step 5/5] Generating Top 1000 highest risk tracts...")
+    if not run_script("generate_top1000.py", "Top 1000 Generation"):
+        print("  ❌ Top 1000 generation failed.")
         return False
     
     # Verify final output
-    top100_file = PREDICTIONS_DIR / "top100_highest_risk_tracts.csv"
-    if check_file_exists(top100_file, "Top 100 CSV file"):
+    top1000_file = PREDICTIONS_DIR / "top1000_highest_risk_tracts.csv"
+    if check_file_exists(top1000_file, "Top 1000 CSV file"):
         print("\n" + "=" * 60)
         print("✓ PIPELINE COMPLETE!")
         print("=" * 60)
         print(f"\n📊 Final Output:")
-        print(f"   {top100_file}")
+        print(f"   {top1000_file}")
         
         # Show summary
         try:
-            df = pd.read_csv(top100_file)
+            df = pd.read_csv(top1000_file)
             print(f"\n📈 Summary:")
-            print(f"   Total tracts in top 100: {len(df)}")
+            print(f"   Total tracts in top 1000: {len(df)}")
             
             # Check if risk_probability column exists (new format) or probability_pct (old format)
             if 'risk_probability' in df.columns:

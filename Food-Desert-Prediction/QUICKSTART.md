@@ -112,28 +112,28 @@ Outputs:
 - `data/predictions/predictions.csv`
 - `data/predictions/prediction_summary.csv`
 
-## Generate Top 100 Highest Risk Tracts
+## Generate Top 1000 Highest Risk Tracts
 
-Generate a prioritized list of the top 100 highest-risk census tracts:
+Generate a prioritized list of the top 1000 highest-risk census tracts:
 ```bash
-python scripts/generate_top100.py
+python scripts/generate_top1000.py
 ```
 
 This will:
 - Load predictions for all tracts
 - Sort by risk probability (highest first)
-- Extract top 100 tracts
+- Extract top 1000 tracts
 - Create formatted output files
 
 Outputs:
-- `data/predictions/top100_highest_risk_tracts.csv` - **Final output CSV** with columns:
+- `data/predictions/top1000_highest_risk_tracts.csv` - **Final output CSV** with columns:
   - `tract_id`: 11-digit census tract identifier
   - `lat`, `lon`: Geographic coordinates
   - `risk_probability`: Predicted probability of becoming food desert (0-1)
   - `demand_mean`, `demand_std`: Estimated weekly grocery shopping demand
   - `svi_score`: Social Vulnerability Index (0-1, higher = more vulnerable)
-- `data/predictions/top100_highest_risk_tracts.txt` - Human-readable text format
-- `data/predictions/top100_highest_risk_tracts.md` - Markdown format with tables
+- `data/predictions/top1000_highest_risk_tracts.txt` - Human-readable text format
+- `data/predictions/top1000_highest_risk_tracts.md` - Markdown format with tables
 
 ## Start API
 
@@ -204,8 +204,8 @@ python scripts/train_model.py
 # 5. Generate predictions
 python scripts/generate_predictions.py
 
-# 6. Generate top 100 highest risk tracts (optional but recommended)
-python scripts/generate_top100.py
+# 6. Generate top 1000 highest risk tracts (optional but recommended)
+python scripts/generate_top1000.py
 
 # 7. Start API (in one terminal)
 cd api && uvicorn main:app --reload

@@ -2,7 +2,7 @@
 Generate a complete CSV file of all U.S. census tract coordinates from TIGER shapefiles.
 
 This script downloads TIGER/Line shapefiles for all states and extracts tract centroids,
-creating a comprehensive mapping file that can be used by generate_top100.py.
+creating a comprehensive mapping file that can be used by generate_top1000.py.
 
 Usage:
     python scripts/generate_all_tract_coordinates.py
@@ -300,7 +300,7 @@ def main():
     if failed_states:
         print(f"\n  ⚠ Failed to process {len(failed_states)} states: {failed_states}")
     
-    print(f"\nThis file will now be used by generate_top100.py for geocoding.")
+    print(f"\nThis file will now be used by generate_top1000.py for geocoding.")
     print("=" * 60)
 
 if __name__ == "__main__":

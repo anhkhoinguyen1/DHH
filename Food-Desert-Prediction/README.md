@@ -44,10 +44,10 @@ Models are evaluated and the best-performing model is selected for predictions.
 ### 4. Prediction Generation
 - Generates risk probabilities for all ~72,000 U.S. census tracts
 - Classifies tracts into risk categories (low, medium, high)
-- Identifies top 100 highest-risk tracts
+- Identifies top 1000 highest-risk tracts
 
 ### 5. Output
-The final output is a CSV file containing the **top 100 census tracts most likely to become food deserts**, including:
+The final output is a CSV file containing the **top 1000 census tracts most likely to become food deserts**, including:
 - Tract identifiers and geographic information (11-digit tract IDs)
 - Geographic coordinates (latitude, longitude) for mapping
 - Risk probability scores (0-1, predicted likelihood of becoming food desert)
@@ -72,7 +72,7 @@ Food-Desert-Prediction/
 │   ├── process_data.py             # Process and merge data, engineer features
 │   ├── train_model.py              # Train machine learning models
 │   ├── generate_predictions.py     # Generate predictions for all tracts
-│   ├── generate_top100.py          # Create top 100 highest-risk tracts CSV
+│   ├── generate_top1000.py          # Create top 1000 highest-risk tracts CSV
 │   ├── run_full_pipeline.py       # Run complete pipeline end-to-end
 │   └── verify_data_collection.py   # Verify all data sources are collected
 ├── api/
@@ -103,7 +103,7 @@ Food-Desert-Prediction/
 - **Feature importance**: Identifies key risk factors
 
 ### Actionable Output
-- **Top 100 highest-risk tracts**: Prioritized list for intervention
+- **Top 1000 highest-risk tracts**: Prioritized list for intervention
 - **Risk probabilities**: Quantified likelihood for each tract
 - **Geographic coordinates**: Ready for mapping and visualization
 - **Risk factors**: Identifies specific vulnerabilities per tract

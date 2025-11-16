@@ -155,9 +155,9 @@ This directory contains all data sources organized into 5 main categories for th
 **Contents**:
 - `predictions.csv` - Predictions for all census tracts
 - `prediction_summary.csv` - Summary statistics
-- `top100_highest_risk_tracts.csv` - Top 100 highest-risk tracts (final output)
-- `top100_highest_risk_tracts.txt` - Human-readable format
-- `top100_highest_risk_tracts.md` - Markdown format with tables
+- `top1000_highest_risk_tracts.csv` - Top 1000 highest-risk tracts (final output)
+- `top1000_highest_risk_tracts.txt` - Human-readable format
+- `top1000_highest_risk_tracts.md` - Markdown format with tables
 
 ---
 
